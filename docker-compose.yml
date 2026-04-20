@@ -20,9 +20,6 @@ services:
     container_name: express_api
     ports:
       - "5000:5000"
-    volumes:
-      - ./back:/app
-      - /app/node_modules
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/mydb
     depends_on:
