@@ -1,4 +1,4 @@
-import type{ User } from '../types/user';
+import type { User } from '../types/user';
 import type { IUserRepository } from '../repositories/IUserRepository';
 
 export class UserService {
@@ -10,9 +10,5 @@ export class UserService {
 
   getUserById(id: number): Promise<User | null> {
     return this.userRepository.findById(id);
-  }
-
-  createUser(user: Omit<User, 'id'>): Promise<User> {
-    return this.userRepository.create(user);
   }
 }

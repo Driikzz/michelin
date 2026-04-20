@@ -1,5 +1,10 @@
 export interface User {
   id: number;
-  name: string;
+  username: string;
   email: string;
+}
+
+export interface UserWithPassword extends User {
+  password_hash: string;
+  created_at: Date;
 }

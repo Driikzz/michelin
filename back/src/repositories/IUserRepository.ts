@@ -1,7 +1,8 @@
-import type { User } from '../types/user';
+import type { User, UserWithPassword } from '../types/user';
 
 export interface IUserRepository {
   findAll(): Promise<User[]>;
   findById(id: number): Promise<User | null>;
-  create(user: Omit<User, 'id'>): Promise<User>;
+  findByEmail(email: string): Promise<UserWithPassword | null>;
+  create(username: string, email: string, passwordHash: string): Promise<User>;
 }
