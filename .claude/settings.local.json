@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/Users/remis/Desktop/01 - Etudes/Hackathon-michelin/**)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

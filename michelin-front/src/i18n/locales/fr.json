@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "lobby": "Salle",
+    "deck": "Sélection",
+    "roulette": "Vote",
+    "rankings": "Classement"
+  },
+  "flow": {
+    "step1": "Salle",
+    "step2": "Sélection",
+    "step3": "Vote",
+    "step4": "Verdict"
+  },
+  "lobby": {
+    "setup": "Configuration",
+    "roomId": "Salle {{id}}",
+    "heroTitle": "ON MANGE OÙ CE SOIR ?",
+    "heroSubtitle": "Réunis tes potes, choisis tes critères et laisse la roulette décider. 60 secondes, un seul gagnant.",
+    "gameMode": "Choisis ton mode",
+    "modes": {
+      "fast": "Rapide",
+      "classic": "Classique",
+      "chaos": "Chaos",
+      "fastDesc": "L'appli choisit pour toi",
+      "classicDesc": "Ajoute tes coups de cœur",
+      "chaosDesc": "Full random, no rules"
+    },
+    "session": "Session #{{id}}",
+    "tonight": "CE SOIR À 20H",
+    "inviteLink": "Inviter des amis",
+    "table": "LA TABLE — {{current}}/{{max}}",
+    "host": "Hôte",
+    "joined": "Connecté",
+    "invited": "En attente",
+    "ready": "Prêt",
+    "addGuest": "Inviter quelqu'un",
+    "theAgenda": "Budget du soir",
+    "vibeModifiers": "Affine ta recherche",
+    "clearAll": "Tout effacer",
+    "custom": "Ajouter",
+    "chaosMode": "Mode Chaos",
+    "chaosModeDesc": "Oublie les filtres. La roulette décide tout.",
+    "maxDistance": "Distance max",
+    "lockIn": "C'EST PARTI",
+    "waitingSignal": "En attente que tout le monde soit prêt...",
+    "start": "On y va !",
+    "presets": {
+      "eco": {
+        "label": "Petit prix",
+        "description": "Les bonnes adresses sans se ruiner. Qualité garantie."
+      },
+      "midrange": {
+        "label": "Sweet spot",
+        "description": "Le meilleur ratio qualité-prix. Ça envoie quand même."
+      },
+      "premium": {
+        "label": "Soirée spéciale",
+        "description": "On sort le grand jeu. Pour les occasions qui comptent."
+      },
+      "gastronomique": {
+        "label": "Grande table",
+        "description": "L'excellence Michelin. Expérience totale, soirée mémorable."
+      }
+    },
+    "tags": {
+      "Japanese": "Japonais",
+      "Italian": "Italien",
+      "Spicy": "Épicé",
+      "Vegetarian": "Végé",
+      "Seafood": "Fruits de mer",
+      "Natural Wine": "Vin nature",
+      "Late Night": "Late night",
+      "Patio": "Terrasse",
+      "Date Night": "Date night"
+    }
+  },
+  "deck": {
+    "timeToCurate": "Temps restant",
+    "curatorTitle": "Tu es le critique.",
+    "curatorSubtitle": "Sélectionne les tables qui méritent d'être dans la course.",
+    "searchPlaceholder": "Chercher un resto, une cuisine...",
+    "exploreNeighborhood": "Dans ton quartier",
+    "nearbyRecommendations": "À deux pas",
+    "addToDeck": "Ajouter au vote",
+    "added": "Dans le deck",
+    "details": "Voir plus",
+    "launchRoulette": "Lancer le vote",
+    "deckCount_one": "{{count}} resto dans ton deck",
+    "deckCount_other": "{{count}} restos dans ton deck",
+    "clearDeck": "Vider",
+    "add": "Ajouter",
+    "sponsored": "Sélection du moment"
+  },
+  "roulette": {
+    "title": "LE VOTE EST OUVERT",
+    "subtitle": "Swipe, vote, decide.",
+    "oui": "OUI",
+    "non": "NON",
+    "ouiShort": "OUI",
+    "nonShort": "NON",
+    "votesIn": "Tous les votes sont fini !",
+    "allVotedDesc": "Le verdict arrive dans quelques instants...",
+    "seeVerdict": "Voir le verdict",
+    "skipToVerdict": "Passer au verdict",
+    "remaining": "restant",
+    "playersVoted": "{{count}} joueurs ont voté"
+  },
+  "verdict": {
+    "tirage": "Tirage au sort",
+    "theVerdict": "Le Verdict",
+    "reserveNow": "Réserver maintenant",
+    "tableHeld": "Table réservée 15 min.",
+    "tableStats": "Les votes de la table",
+    "xpEarned": "+{{xp}} XP",
+    "newGame": "Rejouer",
+    "shareResult": "Partager le verdict",
+    "leaderTitle": "T'as le meilleur goût",
+    "badges": {
+      "streak": "Streak x{{count}}",
+      "leader": "Leader",
+      "firstPick": "Premier choix"
+    }
+  },
+  "common": {
+    "back": "Retour",
+    "notifications": "Notifications",
+    "profile": "Profil",
+    "walk": "À pied",
+    "cab": "En taxi",
+    "km": "{{dist}} km",
+    "away": "à {{dist}}"
+  }
+}
