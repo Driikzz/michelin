@@ -9,6 +9,7 @@ import { DeckBuilderPage } from './pages/DeckBuilderPage';
 import { RoulettePage } from './pages/RoulettePage';
 import { VerdictPage } from './pages/VerdictPage';
 import { JoinPage } from './pages/JoinPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 function App() {
   return (
@@ -19,11 +20,13 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/join/:roomId" element={<JoinPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/lobby" element={<LobbyPage />} />
               <Route path="/deck" element={<DeckBuilderPage />} />
               <Route path="/roulette" element={<RoulettePage />} />
               <Route path="/verdict" element={<VerdictPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<Navigate to="/lobby" replace />} />
           </Routes>

@@ -46,9 +46,12 @@ export function TopNav() {
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>notifications</span>
           </button>
-          <button className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface hover:bg-surface-container-highest transition-all">
+          <NavLink
+            to="/profile"
+            className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface hover:bg-surface-container-highest transition-all"
+          >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>person</span>
-          </button>
+          </NavLink>
         </div>
       </div>
 
