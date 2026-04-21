@@ -107,7 +107,7 @@ const searchQueryParams: OpenAPIV3.ParameterObject[] = [
   { name: 'lng', in: 'query', required: true, schema: { type: 'number' }, description: 'Longitude' },
   { name: 'radius', in: 'query', schema: { type: 'number', default: 5 }, description: 'Radius in km' },
   { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Text search on name' },
-  { name: 'price', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 4 }, description: 'Price category' },
+  { name: 'prices', in: 'query', schema: { type: 'string' }, description: 'Comma-separated price categories (e.g. 1,3)' },
   { name: 'tags', in: 'query', schema: { type: 'string' }, description: 'Comma-separated tag IDs (e.g. 1,3)' },
 ];
 
@@ -364,7 +364,12 @@ export const swaggerDocument: OpenAPIV3.Document = {
                   latitude: { type: 'number', example: 45.75 },
                   longitude: { type: 'number', example: 4.83 },
                   radiusKm: { type: 'number', default: 5, example: 5 },
-                  priceFilter: { type: 'integer', minimum: 1, maximum: 4, nullable: true },
+                  priceFilters: {
+                    type: 'array',
+                    items: { type: 'integer', minimum: 1, maximum: 4 },
+                    default: [],
+                    description: 'Price categories to include (empty = all)',
+                  },
                   tagIds: { type: 'array', items: { type: 'integer' }, default: [] },
                   nickname: { type: 'string', example: 'HostPlayer' },
                 },

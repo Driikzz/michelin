@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { GameProvider } from './contexts/GameContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { Toaster } from './components/ui/Toaster';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -14,7 +16,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ToastProvider>
         <GameProvider>
+          <Toaster />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -28,6 +32,7 @@ function App() {
             <Route path="*" element={<Navigate to="/lobby" replace />} />
           </Routes>
         </GameProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -24,7 +24,7 @@ export class HotelService {
     latitude: number;
     longitude: number;
     radiusKm: number;
-    priceFilter: number | null;
+    priceFilters: number[];
     tagIds: number[];
     count: number;
   }): Promise<Hotel[]> {
@@ -32,7 +32,7 @@ export class HotelService {
       lat: params.latitude,
       lng: params.longitude,
       radius: params.radiusKm,
-      ...(params.priceFilter !== null && { price: params.priceFilter }),
+      ...(params.priceFilters.length > 0 && { prices: params.priceFilters }),
       ...(params.tagIds.length > 0 && { tags: params.tagIds }),
       limit: 100,
     });

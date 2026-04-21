@@ -24,7 +24,7 @@ export interface Hotel {
 export interface HotelSearchParams {
   query?: string;
   tags?: number[];
-  price?: number;
+  prices?: number[];
   lat?: number;
   lng?: number;
   radius?: number;

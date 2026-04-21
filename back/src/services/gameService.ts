@@ -69,34 +69,38 @@ export class GameService {
           : await this.restaurantService.getRandomTagIds(3);
     }
 
-    const gameParams = {
-      latitude: room.latitude,
-      longitude: room.longitude,
-      radiusKm: room.radius_km,
-      priceFilter: room.price_filter,
-      tagIds,
-      count: 10,
-    };
+    let entities: Restaurant[] | Hotel[] = [];
 
-    let entities: Restaurant[] | Hotel[];
+    if (room.game_mode !== 'CLASSIC') {
+      const gameParams = {
+        latitude: room.latitude,
+        longitude: room.longitude,
+        radiusKm: room.radius_km,
+        priceFilters: room.price_filters ?? [],
+        tagIds,
+        count: 10,
+      };
 
-    try {
-      if (entityType === 'HOTEL') {
-        entities = await this.hotelService.getHotelsForGame(gameParams);
-      } else {
-        entities = await this.restaurantService.getRestaurantsForGame(gameParams);
+      try {
+        if (entityType === 'HOTEL') {
+          entities = await this.hotelService.getHotelsForGame(gameParams);
+        } else {
+          entities = await this.restaurantService.getRestaurantsForGame(gameParams);
+        }
+      } catch (err) {
+        if (err instanceof NoRestaurantsError || err instanceof NoHotelsError) throw err;
+        throw new Error(`Failed to fetch ${entityType.toLowerCase()}s`);
       }
-    } catch (err) {
-      if (err instanceof NoRestaurantsError || err instanceof NoHotelsError) throw err;
-      throw new Error(`Failed to fetch ${entityType.toLowerCase()}s`);
     }
 
     const session = await this.sessionRepository.create(roomId);
-    await this.sessionRepository.addEntities(
-      session.id,
-      entities.map((e) => e.id),
-      entityType,
-    );
+    if (entities.length > 0) {
+      await this.sessionRepository.addEntities(
+        session.id,
+        entities.map((e) => e.id),
+        entityType,
+      );
+    }
 
     gameStateManager.setSessionId(roomId, session.id);
     if (entityType === 'HOTEL') {

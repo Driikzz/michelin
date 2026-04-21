@@ -9,13 +9,13 @@ export class RoomRepository implements IRoomRepository {
     entityType: EntityType;
     latitude: number;
     longitude: number;
-    priceFilter: number | null;
+    priceFilters: number[];
     radiusKm: number;
     tagIds: number[];
   }): Promise<GameRoom> {
     const res = await pool.query<GameRoom>(
       `INSERT INTO game_rooms
-         (host_user_id, game_mode, entity_type, latitude, longitude, price_filter, radius_km, tag_ids)
+         (host_user_id, game_mode, entity_type, latitude, longitude, price_filters, radius_km, tag_ids)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
@@ -24,7 +24,7 @@ export class RoomRepository implements IRoomRepository {
         params.entityType,
         params.latitude,
         params.longitude,
-        params.priceFilter,
+        params.priceFilters,
         params.radiusKm,
         params.tagIds,
       ],

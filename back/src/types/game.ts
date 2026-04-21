@@ -11,6 +11,7 @@ export interface GameRoom {
   latitude: number;
   longitude: number;
   price_filter: number | null;
+  price_filters: number[];
   radius_km: number;
   tag_ids: number[];
   created_at: Date;

@@ -27,7 +27,7 @@ export interface Restaurant {
 export interface RestaurantSearchParams {
   query?: string;
   tags?: number[];
-  price?: number;
+  prices?: number[];
   lat?: number;
   lng?: number;
   radius?: number;

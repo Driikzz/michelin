@@ -7,7 +7,8 @@ const hotelService = new HotelService(new HotelRepository());
 export const hotelController = {
   async search(req: Request, res: Response): Promise<void> {
     const q = req.query['q'] as string | undefined;
-    const price = req.query['price'] ? Number(req.query['price']) : undefined;
+    const pricesParam = req.query['prices'] as string | undefined;
+    const prices = pricesParam ? pricesParam.split(',').map(Number).filter(Boolean) : undefined;
     const lat = req.query['lat'] ? Number(req.query['lat']) : undefined;
     const lng = req.query['lng'] ? Number(req.query['lng']) : undefined;
     const radius = req.query['radius'] ? Number(req.query['radius']) : undefined;
@@ -23,7 +24,7 @@ export const hotelController = {
       const hotels = await hotelService.search({
         ...(q !== undefined && { query: q }),
         ...(tags !== undefined && { tags }),
-        ...(price !== undefined && { price }),
+        ...(prices !== undefined && prices.length > 0 && { prices }),
         lat,
         lng,
         ...(radius !== undefined && { radius }),

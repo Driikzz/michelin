@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TopNav } from '../components/layout/TopNav';
 import { useGame } from '../contexts/GameContext';
@@ -8,19 +8,14 @@ import { entityService } from '../services/entityService';
 import { MOCK_PRESETS } from '../data/mockData';
 import type { GameMode, Tag } from '../types/api';
 
-const PRESET_PRICE_MAP: Record<string, number> = {
-  eco: 1,
-  midrange: 2,
-  premium: 3,
-  gastronomique: 4,
-};
+const PRICE_LABELS = ['€', '€€', '€€€', '€€€€'];
 
 export function LobbyPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const game = useGame();
 
-  const [selectedPreset, setSelectedPreset] = useState('midrange');
+  const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [gameMode, setGameMode] = useState<GameMode>('CLASSIC');
   const [radiusKm, setRadiusKm] = useState(5);
@@ -29,6 +24,10 @@ export function LobbyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [entityCount, setEntityCount] = useState<number | null>(null);
+  const [countLoading, setCountLoading] = useState(false);
+
+  const countTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const GAME_MODES: { id: GameMode; icon: string }[] = [
     { id: 'FAST', icon: 'bolt' },
@@ -36,17 +35,44 @@ export function LobbyPage() {
     { id: 'CHAOS', icon: 'casino' },
   ];
 
-  // Geolocation + tags on mount
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setCoords({ lat: 48.85, lng: 2.35 }), // fallback: Paris
+      () => setCoords({ lat: 48.85, lng: 2.35 }),
     );
     entityService
       .getTags('RESTAURANT')
       .then(setTags)
       .catch(() => setTags([]));
   }, []);
+
+  // Debounced restaurant count
+  useEffect(() => {
+    if (!coords || !!game.roomId) return;
+    if (countTimerRef.current) clearTimeout(countTimerRef.current);
+    setCountLoading(true);
+    countTimerRef.current = setTimeout(() => {
+      entityService
+        .searchEntities('RESTAURANT', {
+          lat: coords.lat,
+          lng: coords.lng,
+          radius: radiusKm,
+          ...(selectedPrices.length > 0 && { prices: selectedPrices }),
+          ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
+        })
+        .then((results) => setEntityCount(results.length))
+        .catch(() => setEntityCount(null))
+        .finally(() => setCountLoading(false));
+    }, 500);
+    return () => {
+      if (countTimerRef.current) clearTimeout(countTimerRef.current);
+    };
+  }, [coords, radiusKm, selectedPrices, selectedTags, game.roomId]);
+
+  const togglePrice = (price: number) =>
+    setSelectedPrices((prev) =>
+      prev.includes(price) ? prev.filter((p) => p !== price) : [...prev, price],
+    );
 
   const toggleTag = (tagId: number) =>
     setSelectedTags((prev) =>
@@ -60,12 +86,12 @@ export function LobbyPage() {
     try {
       const token = localStorage.getItem('token') ?? undefined;
       const { roomId, playerId, entityType } = await roomService.createRoom({
-        gameMode: gameMode.toUpperCase() as GameMode,
+        gameMode,
         entityType: 'RESTAURANT',
         latitude: coords.lat,
         longitude: coords.lng,
         radiusKm,
-        priceFilter: PRESET_PRICE_MAP[selectedPreset] ?? null,
+        priceFilters: selectedPrices,
         tagIds: selectedTags,
         nickname: user?.username,
       });
@@ -73,7 +99,7 @@ export function LobbyPage() {
       game.setRoom({
         roomId,
         playerId,
-        gameMode: gameMode.toUpperCase() as GameMode,
+        gameMode,
         entityType,
         latitude: coords.lat,
         longitude: coords.lng,
@@ -105,6 +131,17 @@ export function LobbyPage() {
   const roomCreated = !!game.roomId;
   const readyCount = game.players.length;
 
+  const settingsSummary = () => {
+    const priceStr = selectedPrices.length > 0
+      ? selectedPrices.map((p) => PRICE_LABELS[p - 1]).join(' · ')
+      : 'Tous budgets';
+    const tagNames = selectedTags
+      .map((id) => tags.find((t) => t.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+    return { priceStr, tagNames };
+  };
+
   return (
     <div className="min-h-screen bg-surface flex flex-col">
       <TopNav />
@@ -114,7 +151,7 @@ export function LobbyPage() {
           <div className="inline-flex items-center gap-2 bg-primary-container/10 text-primary-container px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
             <span className="w-2 h-2 bg-primary-container rounded-full animate-pulse" />
             {roomCreated
-              ? `Salle #${game.roomId?.slice(0, 6).toUpperCase()} · ${readyCount} joueur${readyCount !== 1 ? 's' : ''}`
+              ? `${readyCount} joueur${readyCount !== 1 ? 's' : ''} connecté${readyCount !== 1 ? 's' : ''}`
               : t('lobby.heroTitle')}
           </div>
 
@@ -165,41 +202,46 @@ export function LobbyPage() {
                 </div>
               </div>
 
-              {/* Presets */}
+              {/* Price budget — multi-select chips */}
               <div>
-                <p className="text-xs uppercase tracking-widest text-on-surface/40 font-bold mb-3">{t('lobby.theAgenda')}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {MOCK_PRESETS.map(preset => (
-                    <div
-                      key={preset.id}
-                      onClick={() => setSelectedPreset(preset.id)}
-                      className={`rounded-2xl p-4 flex items-start gap-4 cursor-pointer transition-all select-none ${
-                        selectedPreset === preset.id
-                          ? 'bg-surface-container-lowest border-2 border-primary-container/40 shadow-[0_8px_30px_rgba(28,27,27,0.08)]'
-                          : 'bg-surface-container-low border-2 border-transparent hover:border-outline-variant/30'
-                      }`}
-                    >
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                        selectedPreset === preset.id ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface/60'
-                      }`}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '20px', fontVariationSettings: selectedPreset === preset.id ? "'FILL' 1" : "'FILL' 0" }}>
-                          {preset.icon}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-bold text-sm text-on-surface truncate">{t(`lobby.presets.${preset.id}.label`)}</h3>
-                          <span className={`text-sm font-black shrink-0 ${selectedPreset === preset.id ? 'text-primary-container' : 'text-on-surface/50'}`}>{preset.priceRange}</span>
-                        </div>
-                        <p className="text-xs text-on-surface/60 mt-0.5 leading-relaxed">{t(`lobby.presets.${preset.id}.description`)}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs uppercase tracking-widest text-on-surface/40 font-bold">{t('lobby.theAgenda')}</p>
+                  {selectedPrices.length > 0 && (
+                    <button onClick={() => setSelectedPrices([])} className="text-xs font-bold text-primary-container hover:text-primary transition-colors">
+                      {t('lobby.clearAll')}
+                    </button>
+                  )}
                 </div>
+                <div className="flex gap-3 flex-wrap">
+                  {MOCK_PRESETS.map((preset, idx) => {
+                    const price = idx + 1;
+                    const active = selectedPrices.includes(price);
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => togglePrice(price)}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 transition-all font-bold text-sm select-none ${
+                          active
+                            ? 'bg-primary-container text-on-primary border-primary-container shadow-[0_4px_14px_rgba(186,11,47,0.2)] scale-[1.03]'
+                            : 'bg-surface-container-lowest border-outline-variant/20 text-on-surface/70 hover:border-outline-variant/50'
+                        }`}
+                      >
+                        {active && (
+                          <span className="material-symbols-outlined text-on-primary" style={{ fontSize: '15px', fontVariationSettings: "'FILL' 1" }}>check</span>
+                        )}
+                        <span>{preset.priceRange}</span>
+                        <span className={`text-xs ${active ? 'text-on-primary/80' : 'text-on-surface/40'}`}>{preset.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-on-surface/40 mt-2">
+                  {selectedPrices.length === 0 ? 'Tous les budgets inclus' : `${selectedPrices.length} budget${selectedPrices.length > 1 ? 's' : ''} sélectionné${selectedPrices.length > 1 ? 's' : ''}`}
+                </p>
               </div>
 
-              {/* Tags */}
-              {tags.length > 0 && (
+              {/* Tags — hidden in Chaos mode */}
+              {gameMode !== 'CHAOS' && tags.length > 0 && (
                 <div>
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-xs uppercase tracking-widest text-on-surface/40 font-bold">{t('lobby.vibeModifiers')}</p>
@@ -226,17 +268,65 @@ export function LobbyPage() {
                   </div>
                 </div>
               )}
+
+              {/* Restaurant count indicator */}
+              {coords && (
+                <div className="flex items-center gap-2 text-xs text-on-surface/50 font-medium">
+                  {countLoading ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-primary-container" style={{ fontSize: '14px' }}>progress_activity</span>
+                      Recherche…
+                    </>
+                  ) : entityCount !== null ? (
+                    <>
+                      <span className="material-symbols-outlined text-primary-container" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>restaurant</span>
+                      <span className={entityCount === 0 ? 'text-error font-bold' : ''}>
+                        {entityCount === 0 ? 'Aucun restaurant trouvé' : `${entityCount} restaurant${entityCount > 1 ? 's' : ''} disponible${entityCount > 1 ? 's' : ''}`}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+              )}
             </div>
           )}
 
           {/* Waiting room (after room creation) */}
           {roomCreated && (
             <div className="col-span-1 lg:col-span-7 flex flex-col gap-5">
-              <div className="bg-surface-container-low rounded-2xl p-6">
-                <p className="text-xs uppercase tracking-widest text-on-surface/40 font-bold mb-3">Mode de jeu</p>
-                <p className="text-2xl font-black text-on-surface uppercase">{t(`lobby.modes.${game.gameMode?.toLowerCase() ?? 'fast'}`)}</p>
-                <p className="text-sm text-on-surface/50 mt-1">{t(`lobby.modes.${game.gameMode?.toLowerCase() ?? 'fast'}Desc`)}</p>
-              </div>
+              {/* Settings summary */}
+              {(() => {
+                const { priceStr, tagNames } = settingsSummary();
+                return (
+                  <div className="bg-surface-container-low rounded-2xl p-6 flex flex-col gap-3">
+                    <p className="text-xs uppercase tracking-widest text-on-surface/40 font-bold mb-1">Paramètres de la partie</p>
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary-container" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
+                        {GAME_MODES.find(m => m.id === game.gameMode)?.icon ?? 'bolt'}
+                      </span>
+                      <div>
+                        <p className="font-black text-sm text-on-surface uppercase">{t(`lobby.modes.${game.gameMode?.toLowerCase() ?? 'fast'}`)}</p>
+                        <p className="text-xs text-on-surface/50">{t(`lobby.modes.${game.gameMode?.toLowerCase() ?? 'fast'}Desc`)}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-on-surface/60">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>near_me</span>
+                        {radiusKm} km autour de vous
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>euro</span>
+                        {priceStr}
+                      </div>
+                      {tagNames && (
+                        <div className="col-span-2 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>label</span>
+                          {tagNames}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {game.players.length > 0 && (
                 <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0_8px_30px_rgba(28,27,27,0.06)]">
@@ -308,7 +398,6 @@ export function LobbyPage() {
                     {copied ? 'Copié !' : t('lobby.inviteLink')}
                   </button>
                 </div>
-                <p className="text-xs text-on-surface/40 font-mono break-all">/join/{game.roomId?.slice(0, 8)}…</p>
               </div>
             )}
 

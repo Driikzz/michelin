@@ -8,8 +8,8 @@ export class GuestService {
     if (trimmed.length < 2 || trimmed.length > 30) {
       throw new Error('Nickname must be between 2 and 30 characters');
     }
-    if (!/^[a-zA-Z0-9 _-]+$/.test(trimmed)) {
-      throw new Error('Nickname can only contain letters, numbers, spaces, underscores, and hyphens');
+    if (!/^[a-zA-Z0-9 '_-]+$/.test(trimmed)) {
+      throw new Error("Nickname can only contain letters, numbers, spaces, apostrophes, underscores, and hyphens");
     }
     const guest = await this.guestRepository.create(trimmed);
     return { id: guest.id, nickname: guest.nickname };

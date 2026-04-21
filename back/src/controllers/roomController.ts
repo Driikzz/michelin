@@ -26,7 +26,7 @@ export const roomController = {
       entityType?: unknown;
       latitude?: unknown;
       longitude?: unknown;
-      priceFilter?: unknown;
+      priceFilters?: unknown;
       radiusKm?: unknown;
       tagIds?: unknown;
       nickname?: unknown;
@@ -59,7 +59,10 @@ export const roomController = {
         entityType,
         latitude: body.latitude as number,
         longitude: body.longitude as number,
-        priceFilter: typeof body.priceFilter === 'number' ? body.priceFilter : null,
+        priceFilters:
+          Array.isArray(body.priceFilters) && body.priceFilters.every((n) => typeof n === 'number')
+            ? (body.priceFilters as number[])
+            : [],
         radiusKm: typeof body.radiusKm === 'number' ? body.radiusKm : 5,
         tagIds: Array.isArray(body.tagIds) ? (body.tagIds as number[]) : [],
         nickname,

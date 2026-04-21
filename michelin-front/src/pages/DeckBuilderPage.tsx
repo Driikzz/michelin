@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { TopNav } from '../components/layout/TopNav';
 import { RestaurantCard } from '../components/game/RestaurantCard';
 import { CountdownTimer } from '../components/ui/CountdownTimer';
+import { EntityDetailModal } from '../components/game/EntityDetailModal';
 import { useGame, entityImage, michelinStarCount, priceLabel } from '../contexts/GameContext';
 import { entityService } from '../services/entityService';
 import type { Entity } from '../types/api';
@@ -31,6 +32,7 @@ export function DeckBuilderPage() {
   const [results, setResults] = useState<Entity[]>([]);
   const [deck, setDeck] = useState<Set<string>>(new Set());
   const [fetching, setFetching] = useState(false);
+  const [detailEntity, setDetailEntity] = useState<Entity | null>(null);
 
   const isHost = game.playerId !== null && game.playerId === game.hostPlayerId;
 
@@ -44,6 +46,7 @@ export function DeckBuilderPage() {
           lng: game.longitude,
           radius: game.radiusKm,
           ...(q !== undefined && q !== '' && { q }),
+          ...(!q && { limit: 20 }),
         });
         setResults(data);
       } catch {
@@ -55,13 +58,14 @@ export function DeckBuilderPage() {
     [game.latitude, game.longitude, game.radiusKm, game.entityType],
   );
 
-  // Initial load
+  // Initial load of nearby entities (no query, limit 20)
   useEffect(() => {
     void fetchEntities();
   }, [fetchEntities]);
 
-  // Search debounce
+  // Search when 2+ chars typed
   useEffect(() => {
+    if (search.length < 2) return;
     const timer = setTimeout(() => {
       void fetchEntities(search);
     }, 300);
@@ -142,7 +146,7 @@ export function DeckBuilderPage() {
                 key={entity.id}
                 restaurant={toCardShape(entity)}
                 onAdd={() => toggleDeck(entity.id)}
-                onView={() => {}}
+                onView={() => setDetailEntity(entity)}
                 added={deck.has(entity.id)}
               />
             ))}
@@ -263,6 +267,15 @@ export function DeckBuilderPage() {
       )}
 
       <div className="h-28 lg:hidden" />
+
+      {detailEntity && (
+        <EntityDetailModal
+          entity={detailEntity}
+          inDeck={deck.has(detailEntity.id)}
+          onAdd={() => toggleDeck(detailEntity.id)}
+          onClose={() => setDetailEntity(null)}
+        />
+      )}
     </div>
   );
 }
