@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && mkdir -p dist/src/db/migrations && cp src/db/migrations/*.sql dist/src/db/migrations/",
-    "start": "node dist/index.js"
+    "build": "tsc && mkdir -p dist/src/db/migrations && cp src/db/migrations/*.sql dist/src/db/migrations/ && mkdir -p dist/src/db/datas && cp src/db/datas/*.json dist/src/db/datas/",
+    "start": "node dist/index.js",
+    "seed": "ts-node src/db/seeder.ts"
   },
   "keywords": [],
   "author": "",
