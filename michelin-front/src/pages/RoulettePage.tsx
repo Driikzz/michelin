@@ -1,46 +1,59 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TopNav } from '../components/layout/TopNav';
 import { MichelinStars } from '../components/ui/MichelinStars';
-import { MOCK_RESTAURANTS } from '../data/mockData';
-
-const MOCK_FRIENDS_VOTES: Record<string, { name: string; voted: boolean }[]> = {
-  '1': [{ name: 'Marc', voted: true }, { name: 'Sophie', voted: false }],
-  '2': [{ name: 'Marc', voted: true }, { name: 'Sophie', voted: true }],
-  '3': [{ name: 'Marc', voted: false }, { name: 'Sophie', voted: true }],
-  '4': [{ name: 'Marc', voted: true }, { name: 'Sophie', voted: false }],
-  '5': [{ name: 'Marc', voted: true }, { name: 'Sophie', voted: true }],
-};
+import { useGame, entityImage, michelinStarCount, priceLabel } from '../contexts/GameContext';
 
 export function RoulettePage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const game = useGame();
+
+  const entities = game.entities;
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [votes, setVotes] = useState<Record<string, 'oui' | 'non'>>({});
+  const [voted, setVoted] = useState<Record<string, 'oui' | 'non'>>({});
   const [animDir, setAnimDir] = useState<'oui' | 'non' | null>(null);
   const [seconds, setSeconds] = useState(60);
 
+  // Drive timer from server's timerEndsAt
   useEffect(() => {
-    if (seconds <= 0) { navigate('/verdict'); return; }
-    const t = setTimeout(() => setSeconds(s => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [seconds, navigate]);
+    const tick = setInterval(() => {
+      if (game.timerEndsAt) {
+        const remaining = Math.max(0, Math.round((game.timerEndsAt - Date.now()) / 1000));
+        setSeconds(remaining);
+      } else {
+        setSeconds(s => Math.max(0, s - 1));
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [game.timerEndsAt]);
 
-  const current = MOCK_RESTAURANTS[currentIndex];
-  const allVoted = currentIndex >= MOCK_RESTAURANTS.length;
+  const current = entities[currentIndex];
+  const allVoted = currentIndex >= entities.length && entities.length > 0;
   const progress = (seconds / 60) * 100;
   const isUrgent = seconds <= 15;
 
   const handleVote = (choice: 'oui' | 'non') => {
     if (!current || animDir) return;
     setAnimDir(choice);
+    const vote = choice === 'oui';
+    game.sendVote(current.id, vote);
     setTimeout(() => {
-      setVotes(prev => ({ ...prev, [current.id]: choice }));
+      setVoted(prev => ({ ...prev, [current.id]: choice }));
       setCurrentIndex(prev => prev + 1);
       setAnimDir(null);
     }, 380);
   };
+
+  if (entities.length === 0) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center px-6 text-center">
+        <div className="flex flex-col items-center gap-4">
+          <span className="material-symbols-outlined animate-spin text-primary-container text-4xl">progress_activity</span>
+          <p className="text-on-surface/50">En attente des établissements…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (allVoted) {
     return (
@@ -52,19 +65,21 @@ export function RoulettePage() {
           {t('roulette.votesIn')}
         </h1>
         <p className="text-on-surface/50 max-w-xs">{t('roulette.allVotedDesc')}</p>
-        <button
-          onClick={() => navigate('/verdict')}
-          className="bg-primary-container text-on-primary py-4 px-10 rounded-2xl font-black text-sm uppercase tracking-widest shadow-[0_12px_30px_rgba(186,11,47,0.25)] hover:bg-primary transition-all hover:scale-[1.02] flex items-center gap-2 mt-2"
-        >
-          {t('roulette.seeVerdict')}
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_forward</span>
-        </button>
+        <p className="text-xs text-on-surface/30 uppercase tracking-widest font-bold animate-pulse">
+          En attente des autres joueurs…
+        </p>
       </div>
     );
   }
 
-  const friendVotes = MOCK_FRIENDS_VOTES[current?.id] ?? [];
-  const votedCount = Object.keys(votes).length;
+  const votedCount = Object.keys(voted).length;
+  const likeCount = current ? (game.likeCounts[current.id] ?? 0) : 0;
+
+  const starCount = michelinStarCount(current?.michelin_rank);
+  const image = entityImage(
+    current ?? { images: [] },
+    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+  );
 
   return (
     <div className="min-h-screen bg-surface flex flex-col overflow-hidden">
@@ -86,7 +101,6 @@ export function RoulettePage() {
             <h1 className="text-xl md:text-2xl font-black text-on-surface tracking-tight uppercase">{t('roulette.title')}</h1>
             <p className="text-xs text-on-surface/40 uppercase tracking-widest font-bold">{t('roulette.subtitle')}</p>
           </div>
-          {/* Timer badge */}
           <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-2xl tracking-tighter transition-all ${isUrgent ? 'bg-error/10 text-error animate-pulse' : 'bg-primary-container/10 text-primary-container'}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1" }}>timer</span>
             {String(seconds).padStart(2, '0')}
@@ -95,11 +109,11 @@ export function RoulettePage() {
 
         {/* Progress dots */}
         <div className="flex items-center gap-1.5">
-          {MOCK_RESTAURANTS.map((r, i) => {
-            const v = votes[r.id];
+          {entities.map((e, i) => {
+            const v = voted[e.id];
             return (
               <div
-                key={r.id}
+                key={e.id}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   v === 'oui' ? 'bg-green-500 w-4' :
                   v === 'non' ? 'bg-primary-container w-4' :
@@ -109,19 +123,16 @@ export function RoulettePage() {
               />
             );
           })}
-          <span className="text-xs text-on-surface/40 font-bold ml-1">{votedCount}/{MOCK_RESTAURANTS.length}</span>
+          <span className="text-xs text-on-surface/40 font-bold ml-1">{votedCount}/{entities.length}</span>
         </div>
 
-        {/* Friends voting status */}
-        {friendVotes.length > 0 && (
-          <div className="flex items-center gap-2 bg-surface-container-low rounded-xl px-4 py-2 w-full">
-            <span className="text-xs text-on-surface/40 font-bold uppercase tracking-wider">Tes amis :</span>
-            {friendVotes.map(f => (
-              <div key={f.name} className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${f.voted ? 'bg-green-500' : 'bg-surface-container-high'}`} />
-                <span className="text-xs text-on-surface/60 font-medium">{f.name}</span>
-              </div>
-            ))}
+        {/* Live like count */}
+        {likeCount > 0 && (
+          <div className="flex items-center gap-2 bg-green-50 rounded-xl px-4 py-2 w-full">
+            <span className="material-symbols-outlined text-green-600" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>favorite</span>
+            <span className="text-xs text-green-700 font-bold">
+              {likeCount} joueur{likeCount !== 1 ? 's' : ''} aime{likeCount !== 1 ? 'nt' : ''} cet établissement
+            </span>
           </div>
         )}
 
@@ -135,10 +146,9 @@ export function RoulettePage() {
             }`}
             style={{ minHeight: '460px' }}
           >
-            <img src={current.image} alt={current.name} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={image} alt={current?.name} className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/10" />
 
-            {/* Vote overlay feedback */}
             {animDir === 'oui' && (
               <div className="absolute inset-0 bg-green-500/25 flex items-center justify-center z-20">
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-8 py-5 border-2 border-green-400 flex items-center gap-3">
@@ -156,56 +166,46 @@ export function RoulettePage() {
               </div>
             )}
 
-            {/* Sponsored badge */}
-            {current.sponsored && (
-              <div className="absolute top-4 left-4 bg-primary-container text-on-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-                <span className="material-symbols-outlined" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>star</span>
-                Sélection du moment
-              </div>
-            )}
-
             <div className="absolute inset-0 p-6 flex flex-col justify-end gap-3">
-              {/* Tags */}
               <div className="flex flex-wrap gap-1.5">
-                {current.tags.map(tag => (
+                {current?.tags.slice(0, 3).map(tag => (
                   <span
-                    key={tag}
-                    className={`backdrop-blur-md text-[10px] uppercase tracking-widest px-3 py-1 rounded-full font-bold ${
-                      tag.startsWith('$') ? 'bg-primary-container/90 text-on-primary' : 'bg-white/20 text-white'
-                    }`}
+                    key={tag.id}
+                    className="backdrop-blur-md text-[10px] uppercase tracking-widest px-3 py-1 rounded-full font-bold bg-white/20 text-white"
                   >
-                    {tag}
+                    {tag.name}
                   </span>
                 ))}
+                {current?.price_category && (
+                  <span className="backdrop-blur-md text-[10px] uppercase tracking-widest px-3 py-1 rounded-full font-bold bg-primary-container/90 text-on-primary">
+                    {priceLabel(current.price_category)}
+                  </span>
+                )}
               </div>
 
-              {/* Name */}
-              <h2 className="text-[2.2rem] font-black text-white leading-tight tracking-tight">{current.name}</h2>
+              <h2 className="text-[2.2rem] font-black text-white leading-tight tracking-tight">{current?.name}</h2>
 
-              {/* Stars + meta */}
               <div className="flex items-center gap-3">
-                <MichelinStars count={current.stars} size="sm" />
+                <MichelinStars count={starCount} size="sm" />
                 <div className="flex items-center gap-2 text-white/60 text-xs font-bold uppercase tracking-wide">
-                  <span>{current.priceRange}</span>
-                  <span className="w-1 h-1 bg-white/30 rounded-full" />
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>location_on</span>
-                    {current.location}
+                    {current?.city ?? current?.country ?? ''}
                   </span>
                 </div>
               </div>
 
-              {/* Quote */}
-              <p className="text-white/70 text-sm leading-relaxed line-clamp-2 border-l-2 border-white/20 pl-3">
-                {current.quote.replace(/"/g, '')}
-              </p>
+              {current?.description && (
+                <p className="text-white/70 text-sm leading-relaxed line-clamp-2 border-l-2 border-white/20 pl-3">
+                  {current.description}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
         {/* Vote Buttons */}
         <div className="flex justify-center items-center gap-6 w-full">
-          {/* NON */}
           <button
             onClick={() => handleVote('non')}
             disabled={!!animDir}
@@ -217,13 +217,11 @@ export function RoulettePage() {
             <span className="text-xs font-black uppercase tracking-widest text-on-surface/40">{t('roulette.nonShort')}</span>
           </button>
 
-          {/* Counter */}
           <div className="flex flex-col items-center">
             <span className="text-2xl font-black text-on-surface">{currentIndex + 1}</span>
-            <span className="text-xs text-on-surface/30 font-bold">/ {MOCK_RESTAURANTS.length}</span>
+            <span className="text-xs text-on-surface/30 font-bold">/ {entities.length}</span>
           </div>
 
-          {/* OUI */}
           <button
             onClick={() => handleVote('oui')}
             disabled={!!animDir}
@@ -235,14 +233,6 @@ export function RoulettePage() {
             <span className="text-xs font-black uppercase tracking-widest text-primary-container">{t('roulette.ouiShort')}</span>
           </button>
         </div>
-
-        {/* Skip */}
-        <button
-          onClick={() => navigate('/verdict')}
-          className="text-xs text-on-surface/30 hover:text-on-surface/60 transition-colors uppercase tracking-widest font-bold"
-        >
-          {t('roulette.skipToVerdict')}
-        </button>
       </main>
     </div>
   );

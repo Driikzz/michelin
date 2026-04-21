@@ -12,11 +12,15 @@ export function optionalAuthenticate(req: Request, _res: Response, next: NextFun
   const secret = process.env['JWT_SECRET'];
   if (!secret) return next();
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   try {
     const payload = jwt.verify(token, secret) as JwtPayload;
-    req.user = payload;
+    if (UUID_RE.test(payload.userId)) {
+      req.user = payload;
+    }
   } catch {
-    // Invalid token — continue without user
+    // Invalid or legacy token — continue without user
   }
   next();
 }

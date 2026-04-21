@@ -18,13 +18,20 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     return;
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   try {
     const decoded = jwt.verify(token, secret);
     if (typeof decoded === 'string') {
       res.status(401).json({ error: 'Invalid token' });
       return;
     }
-    req.user = decoded as JwtPayload;
+    const payload = decoded as JwtPayload;
+    if (!UUID_RE.test(payload.userId)) {
+      res.status(401).json({ error: 'Token issued before UUID migration — please log in again' });
+      return;
+    }
+    req.user = payload;
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });

@@ -12,5 +12,6 @@ const server = (0, http_1.createServer)(app_1.default);
 (0, websocketServer_1.initializeWebSocketServer)(server);
 server.listen(port, () => {
     console.log(`Express server with WebSocket running on http://localhost:${port}`);
+    console.log(`Swagger UI running on http://localhost:${port}/api/docs`);
 });
 //# sourceMappingURL=index.js.map
