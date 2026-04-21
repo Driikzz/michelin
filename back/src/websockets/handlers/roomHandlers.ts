@@ -3,19 +3,12 @@ import { gameStateManager } from '../../game/gameStateManager';
 import * as timerManager from '../../game/timerManager';
 import type { GameService } from '../../services/gameService';
 import { NoRestaurantsError } from '../../services/restaurantService';
+import { NoHotelsError } from '../../services/hotelService';
 import { broadcastToRoom, sendError, sendToPlayer, triggerEndVoting } from '../websocketServer';
-
-interface RoomStartPayload {
-  sessionId?: unknown;
-}
-
-interface RoomJoinPayload {
-  // Nothing needed — registration already complete
-}
 
 export function handleRoomJoin(
   ws: WebSocket,
-  _payload: RoomJoinPayload,
+  _payload: object,
   context: { playerId: number; roomId: string },
 ): void {
   const { roomId } = context;
@@ -28,7 +21,8 @@ export function handleRoomJoin(
   sendToPlayer(ws, 'room:update', {
     phase: state.phase,
     gameMode: state.gameMode,
-    restaurants: state.restaurants,
+    entityType: state.entityType,
+    entities: gameStateManager.getEntities(roomId),
     timerEndsAt: state.timerEndsAt,
     sessionId: state.sessionId,
     hostPlayerId: state.hostPlayerId,
@@ -37,7 +31,7 @@ export function handleRoomJoin(
 
 export async function handleRoomStart(
   ws: WebSocket,
-  payload: RoomStartPayload,
+  _payload: object,
   context: { playerId: number; roomId: string },
   gameService: GameService,
 ): Promise<void> {
@@ -49,15 +43,15 @@ export async function handleRoomStart(
     return;
   }
 
-  // CLASSIC: second call transitions from BUILDING → VOTING
+  // CLASSIC: second call transitions BUILDING → VOTING
   if (state.phase === 'BUILDING') {
     if (!gameStateManager.isHostPlayer(roomId, playerId)) {
       sendError(ws, 'Only the host can start voting');
       return;
     }
-    const restaurants = gameStateManager.getRestaurants(roomId);
-    if (restaurants.length === 0) {
-      sendError(ws, 'No restaurants in pool');
+    const entities = gameStateManager.getEntities(roomId);
+    if (entities.length === 0) {
+      sendError(ws, 'No entities in pool');
       return;
     }
 
@@ -67,15 +61,15 @@ export async function handleRoomStart(
     timerManager.startTimer({
       roomId,
       durationSeconds: 60,
-      onTick: (remaining) =>
-        broadcastToRoom(roomId, 'game:timer_update', { remaining }),
+      onTick: (remaining) => broadcastToRoom(roomId, 'game:timer_update', { remaining }),
       onExpire: () => triggerEndVoting(roomId, sessionId, gameService),
     });
 
     broadcastToRoom(roomId, 'game:start', {
       phase: 'VOTING',
       sessionId,
-      restaurants,
+      entities,
+      entityType: state.entityType,
       timerSeconds: 60,
       timerEndsAt: state.timerEndsAt,
     });
@@ -88,15 +82,19 @@ export async function handleRoomStart(
   }
 
   try {
-    const { session, restaurants, timerSeconds } = await gameService.startGame(roomId, playerId);
+    const { session, entities, entityType, timerSeconds } = await gameService.startGame(
+      roomId,
+      playerId,
+    );
 
     if (state.gameMode === 'CLASSIC') {
       gameStateManager.setPhase(roomId, 'BUILDING');
       broadcastToRoom(roomId, 'game:start', {
         phase: 'BUILDING',
         sessionId: session.id,
-        restaurants,
-        message: 'Add more restaurants before voting begins',
+        entities,
+        entityType,
+        message: 'Add more entities before voting begins',
       });
     } else {
       gameStateManager.setPhase(roomId, 'VOTING');
@@ -104,22 +102,21 @@ export async function handleRoomStart(
       timerManager.startTimer({
         roomId,
         durationSeconds: timerSeconds,
-        onTick: (remaining) =>
-          broadcastToRoom(roomId, 'game:timer_update', { remaining }),
+        onTick: (remaining) => broadcastToRoom(roomId, 'game:timer_update', { remaining }),
         onExpire: () => triggerEndVoting(roomId, session.id, gameService),
       });
 
       broadcastToRoom(roomId, 'game:start', {
         phase: 'VOTING',
         sessionId: session.id,
-        restaurants,
+        entities,
+        entityType,
         timerSeconds,
         timerEndsAt: gameStateManager.getRoom(roomId)?.timerEndsAt,
       });
     }
   } catch (err) {
-    const msg = (err as Error).message;
-    const isNoRestaurants = err instanceof NoRestaurantsError;
-    sendError(ws, isNoRestaurants ? msg : `Could not start game: ${msg}`);
+    const isNoEntity = err instanceof NoRestaurantsError || err instanceof NoHotelsError;
+    sendError(ws, isNoEntity ? (err as Error).message : `Could not start game: ${(err as Error).message}`);
   }
 }

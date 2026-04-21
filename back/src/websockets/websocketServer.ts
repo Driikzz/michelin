@@ -3,27 +3,30 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { gameStateManager } from '../game/gameStateManager';
 import { RoomRepository } from '../repositories/roomRepository';
 import { RestaurantRepository } from '../repositories/restaurantRepository';
+import { HotelRepository } from '../repositories/hotelRepository';
 import { GameSessionRepository } from '../repositories/gameSessionRepository';
 import { UserRepository } from '../repositories/userRepository';
 import { GameService } from '../services/gameService';
 import { RestaurantService } from '../services/restaurantService';
+import { HotelService } from '../services/hotelService';
 import type { GameEndResult } from '../services/gameService';
 import type { WsMessage } from '../types/game';
 import { resolveWsIdentity } from './wsAuth';
 import { getContext, registerConnection, unregisterConnection } from './wsRegistry';
-import { handleGameVote, handleAddRestaurant } from './handlers/gameHandlers';
+import { handleGameVote, handleAddEntity } from './handlers/gameHandlers';
 import { handleRoomJoin, handleRoomStart } from './handlers/roomHandlers';
 
 function makeGameService(): GameService {
   const roomRepo = new RoomRepository();
   const sessionRepo = new GameSessionRepository();
   const restaurantRepo = new RestaurantRepository();
+  const hotelRepo = new HotelRepository();
   const restaurantService = new RestaurantService(restaurantRepo);
+  const hotelService = new HotelService(hotelRepo);
   const userRepo = new UserRepository();
-  return new GameService(roomRepo, sessionRepo, restaurantRepo, restaurantService, userRepo);
+  return new GameService(roomRepo, sessionRepo, restaurantRepo, hotelRepo, restaurantService, hotelService, userRepo);
 }
 
-// Shared singleton for the game service used by timer callbacks
 const gameService = makeGameService();
 
 export function sendToPlayer(ws: WebSocket, event: string, payload: unknown): void {
@@ -67,8 +70,9 @@ export async function triggerEndVoting(
   }
 
   broadcastToRoom(roomId, 'game:end', {
-    winnerRestaurantId: result.winnerRestaurantId,
-    restaurant: result.restaurant,
+    winnerId: result.winnerId,
+    entity: result.entity,
+    entityType: result.entityType,
     wasRandom: result.wasRandom,
     xpAwards: result.xpAwards,
   });
@@ -100,22 +104,17 @@ export function initializeWebSocketServer(server: Server): void {
 
   wss.on(
     'connection',
-    (
-      ws: WebSocket,
-      identity: Awaited<ReturnType<typeof resolveWsIdentity>> & object,
-    ) => {
+    (ws: WebSocket, identity: Awaited<ReturnType<typeof resolveWsIdentity>> & object) => {
       if (!identity) return;
 
       const { roomId } = identity;
       const roomRepo = new RoomRepository();
 
-      // Resolve playerId from identity
       void (async () => {
         let playerId: number | null = null;
 
         try {
           const players = await roomRepo.getPlayers(roomId);
-
           if (identity.type === 'user') {
             const found = players.find((p) => p.user_id === identity.userId);
             if (found) playerId = found.id;
@@ -140,10 +139,8 @@ export function initializeWebSocketServer(server: Server): void {
           return;
         }
 
-        // Disallow late joins to in-progress games
         if (state.phase !== 'WAITING' && state.phase !== 'BUILDING') {
           const existingVotes = state.votes.get(playerId);
-          // Allow reconnect only if player had previous votes (was part of the game)
           if (!existingVotes || existingVotes.size === 0) {
             sendError(ws, 'Game already in progress. Cannot join mid-game.');
             ws.close(4005, 'Game in progress');
@@ -154,7 +151,6 @@ export function initializeWebSocketServer(server: Server): void {
         registerConnection(ws, playerId, roomId);
         gameStateManager.registerSocket(roomId, playerId, ws);
 
-        // Notify room of updated player list
         try {
           const players = await roomRepo.getPlayers(roomId);
           broadcastToRoom(roomId, 'room:update', {
@@ -163,7 +159,7 @@ export function initializeWebSocketServer(server: Server): void {
             timerEndsAt: state.timerEndsAt,
           });
         } catch {
-          // Non-fatal
+          // non-fatal
         }
 
         ws.on('message', (raw) => {
@@ -191,8 +187,9 @@ export function initializeWebSocketServer(server: Server): void {
               void handleGameVote(ws, msg.payload as object, ctx, gameService);
               break;
 
-            case 'game:add_restaurant':
-              void handleAddRestaurant(ws, msg.payload as object, ctx, gameService);
+            case 'game:add_entity':
+            case 'game:add_restaurant': // backwards compat alias
+              void handleAddEntity(ws, msg.payload as object, ctx, gameService);
               break;
 
             default:
@@ -205,8 +202,6 @@ export function initializeWebSocketServer(server: Server): void {
           if (ctx) {
             gameStateManager.removeSocket(ctx.roomId, ctx.playerId);
             unregisterConnection(ws);
-
-            // Notify remaining players
             broadcastToRoom(ctx.roomId, 'room:update', {
               disconnectedPlayerId: ctx.playerId,
             });

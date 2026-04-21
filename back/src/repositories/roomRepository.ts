@@ -1,11 +1,12 @@
 import { pool } from '../db/pool';
-import type { GameMode, GameRoom, RoomPlayer, RoomStatus } from '../types/game';
+import type { EntityType, GameMode, GameRoom, RoomPlayer, RoomStatus } from '../types/game';
 import type { IRoomRepository } from './IRoomRepository';
 
 export class RoomRepository implements IRoomRepository {
   async create(params: {
     hostUserId: string;
     gameMode: GameMode;
+    entityType: EntityType;
     latitude: number;
     longitude: number;
     priceFilter: number | null;
@@ -13,12 +14,14 @@ export class RoomRepository implements IRoomRepository {
     tagIds: number[];
   }): Promise<GameRoom> {
     const res = await pool.query<GameRoom>(
-      `INSERT INTO game_rooms (host_user_id, game_mode, latitude, longitude, price_filter, radius_km, tag_ids)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO game_rooms
+         (host_user_id, game_mode, entity_type, latitude, longitude, price_filter, radius_km, tag_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         params.hostUserId,
         params.gameMode,
+        params.entityType,
         params.latitude,
         params.longitude,
         params.priceFilter,

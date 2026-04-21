@@ -1,11 +1,13 @@
 export type GameMode = 'FAST' | 'CLASSIC' | 'CHAOS';
 export type RoomStatus = 'WAITING' | 'PLAYING' | 'FINISHED';
+export type EntityType = 'RESTAURANT' | 'HOTEL';
 
 export interface GameRoom {
   id: string;
   host_user_id: string;
   game_mode: GameMode;
   status: RoomStatus;
+  entity_type: EntityType;
   latitude: number;
   longitude: number;
   price_filter: number | null;

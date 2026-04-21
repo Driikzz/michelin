@@ -1,12 +1,13 @@
 import type { Request, Response } from 'express';
+import { gameStateManager } from '../game/gameStateManager';
 import { GuestRepository } from '../repositories/guestRepository';
 import { RoomRepository } from '../repositories/roomRepository';
 import { UserRepository } from '../repositories/userRepository';
 import { RoomService } from '../services/roomService';
-import { gameStateManager } from '../game/gameStateManager';
-import type { GameMode } from '../types/game';
+import type { EntityType, GameMode } from '../types/game';
 
 const VALID_MODES: GameMode[] = ['FAST', 'CLASSIC', 'CHAOS'];
+const VALID_ENTITY_TYPES: EntityType[] = ['RESTAURANT', 'HOTEL'];
 
 function makeRoomService(): RoomService {
   return new RoomService(new RoomRepository(), new UserRepository(), new GuestRepository());
@@ -22,6 +23,7 @@ export const roomController = {
 
     const body = req.body as {
       gameMode?: unknown;
+      entityType?: unknown;
       latitude?: unknown;
       longitude?: unknown;
       priceFilter?: unknown;
@@ -39,6 +41,11 @@ export const roomController = {
       return;
     }
 
+    const entityType: EntityType =
+      VALID_ENTITY_TYPES.includes(body.entityType as EntityType)
+        ? (body.entityType as EntityType)
+        : 'RESTAURANT';
+
     const nickname =
       typeof body.nickname === 'string' && body.nickname.trim()
         ? body.nickname.trim()
@@ -49,18 +56,18 @@ export const roomController = {
       const { room, hostPlayer } = await roomService.createRoom({
         hostUserId: userId,
         gameMode: body.gameMode as GameMode,
+        entityType,
         latitude: body.latitude as number,
         longitude: body.longitude as number,
-        priceFilter:
-          typeof body.priceFilter === 'number' ? body.priceFilter : null,
+        priceFilter: typeof body.priceFilter === 'number' ? body.priceFilter : null,
         radiusKm: typeof body.radiusKm === 'number' ? body.radiusKm : 5,
         tagIds: Array.isArray(body.tagIds) ? (body.tagIds as number[]) : [],
         nickname,
       });
 
-      gameStateManager.initRoom(room.id, room.game_mode, hostPlayer.id);
+      gameStateManager.initRoom(room.id, room.game_mode, hostPlayer.id, entityType);
 
-      res.status(201).json({ roomId: room.id, playerId: hostPlayer.id });
+      res.status(201).json({ roomId: room.id, playerId: hostPlayer.id, entityType });
     } catch (err) {
       res.status(400).json({ error: (err as Error).message });
     }
@@ -108,7 +115,8 @@ export const roomController = {
       res.json({ playerId: player.id, nickname: player.nickname });
     } catch (err) {
       const msg = (err as Error).message;
-      const status = msg === 'Room not found' ? 404 : msg === 'Room is not accepting new players' ? 409 : 400;
+      const status =
+        msg === 'Room not found' ? 404 : msg === 'Room is not accepting new players' ? 409 : 400;
       res.status(status).json({ error: msg });
     }
   },

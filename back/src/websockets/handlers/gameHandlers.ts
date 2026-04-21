@@ -2,22 +2,20 @@ import type { WebSocket } from 'ws';
 import { gameStateManager } from '../../game/gameStateManager';
 import * as timerManager from '../../game/timerManager';
 import { GameSessionRepository } from '../../repositories/gameSessionRepository';
-import { RestaurantRepository } from '../../repositories/restaurantRepository';
 import type { GameService } from '../../services/gameService';
 import { broadcastToRoom, sendError, triggerEndVoting } from '../websocketServer';
 
 const sessionRepository = new GameSessionRepository();
-const restaurantRepository = new RestaurantRepository();
 
 interface VotePayload {
   sessionId?: unknown;
-  restaurantId?: unknown;
+  entityId?: unknown;
   vote?: unknown;
 }
 
-interface AddRestaurantPayload {
+interface AddEntityPayload {
   sessionId?: unknown;
-  restaurantId?: unknown;
+  entityId?: unknown;
 }
 
 export async function handleGameVote(
@@ -34,14 +32,10 @@ export async function handleGameVote(
     return;
   }
 
-  const { sessionId, restaurantId, vote } = payload;
+  const { sessionId, entityId, vote } = payload;
 
-  if (
-    typeof sessionId !== 'number' ||
-    typeof restaurantId !== 'string' ||
-    typeof vote !== 'boolean'
-  ) {
-    sendError(ws, 'Invalid vote payload: sessionId (number), restaurantId (string), vote (boolean) required');
+  if (typeof sessionId !== 'number' || typeof entityId !== 'string' || typeof vote !== 'boolean') {
+    sendError(ws, 'Invalid vote payload: sessionId (number), entityId (string), vote (boolean) required');
     return;
   }
 
@@ -50,26 +44,25 @@ export async function handleGameVote(
     return;
   }
 
-  const restaurants = gameStateManager.getRestaurants(roomId);
-  if (!restaurants.some((r) => r.id === restaurantId)) {
-    sendError(ws, 'Restaurant not in session pool');
+  const entities = gameStateManager.getEntities(roomId);
+  if (!entities.some((e) => e.id === entityId)) {
+    sendError(ws, 'Entity not in session pool');
     return;
   }
 
-  const recorded = gameStateManager.recordVote(roomId, playerId, restaurantId, vote);
+  const recorded = gameStateManager.recordVote(roomId, playerId, entityId, vote);
   if (!recorded) {
-    sendError(ws, 'Already voted on this restaurant');
+    sendError(ws, 'Already voted on this entity');
     return;
   }
 
-  await sessionRepository.recordVote(sessionId, playerId, restaurantId, vote);
+  await sessionRepository.recordVote(sessionId, playerId, entityId, vote, state.entityType);
 
-  // Broadcast aggregate like count for this restaurant
   let likeCount = 0;
   for (const playerVotes of gameStateManager.getVotes(roomId).values()) {
-    if (playerVotes.get(restaurantId) === true) likeCount++;
+    if (playerVotes.get(entityId) === true) likeCount++;
   }
-  broadcastToRoom(roomId, 'game:vote_update', { restaurantId, likeCount });
+  broadcastToRoom(roomId, 'game:vote_update', { entityId, likeCount, entityType: state.entityType });
 
   if (gameStateManager.allPlayersVotedAll(roomId)) {
     timerManager.stopTimer(roomId);
@@ -77,9 +70,9 @@ export async function handleGameVote(
   }
 }
 
-export async function handleAddRestaurant(
+export async function handleAddEntity(
   ws: WebSocket,
-  payload: AddRestaurantPayload,
+  payload: AddEntityPayload,
   context: { playerId: number; roomId: string },
   gameService: GameService,
 ): Promise<void> {
@@ -99,10 +92,10 @@ export async function handleAddRestaurant(
     return;
   }
 
-  const { sessionId, restaurantId } = payload;
+  const { sessionId, entityId } = payload;
 
-  if (typeof sessionId !== 'number' || typeof restaurantId !== 'string') {
-    sendError(ws, 'Invalid payload: sessionId (number) and restaurantId (string) required');
+  if (typeof sessionId !== 'number' || typeof entityId !== 'string') {
+    sendError(ws, 'Invalid payload: sessionId (number) and entityId (string) required');
     return;
   }
 
@@ -111,20 +104,18 @@ export async function handleAddRestaurant(
     return;
   }
 
-  // Verify restaurant exists before trying to add
-  const existing = await restaurantRepository.findById(restaurantId);
-  if (!existing) {
-    sendError(ws, 'Restaurant not found');
-    return;
-  }
-
   try {
-    const updatedRestaurants = await gameService.addRestaurantToPool({
+    const updatedEntities = await gameService.addEntityToPool({
       sessionId,
-      restaurantId,
+      entityId,
       roomId,
+      entityType: state.entityType,
     });
-    broadcastToRoom(roomId, 'room:update', { phase: 'BUILDING', restaurants: updatedRestaurants });
+    broadcastToRoom(roomId, 'room:update', {
+      phase: 'BUILDING',
+      entities: updatedEntities,
+      entityType: state.entityType,
+    });
   } catch (err) {
     sendError(ws, (err as Error).message);
   }

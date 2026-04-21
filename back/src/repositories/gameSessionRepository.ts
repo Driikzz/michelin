@@ -1,5 +1,5 @@
 import { pool } from '../db/pool';
-import type { GameSession } from '../types/game';
+import type { EntityType, GameSession } from '../types/game';
 import type { IGameSessionRepository } from './IGameSessionRepository';
 
 export class GameSessionRepository implements IGameSessionRepository {
@@ -25,83 +25,99 @@ export class GameSessionRepository implements IGameSessionRepository {
     await pool.query('UPDATE game_sessions SET ended_at = now() WHERE id = $1', [sessionId]);
   }
 
-  async addRestaurants(sessionId: number, restaurantIds: string[]): Promise<void> {
-    if (restaurantIds.length === 0) return;
+  async addEntities(sessionId: number, entityIds: string[], entityType: EntityType): Promise<void> {
+    if (entityIds.length === 0) return;
+    const table = entityType === 'HOTEL' ? 'game_hotels' : 'game_restaurants';
+    const col = entityType === 'HOTEL' ? 'hotel_id' : 'restaurant_id';
     const values: unknown[] = [];
-    const placeholders = restaurantIds.map((id, idx) => {
+    const placeholders = entityIds.map((id, idx) => {
       values.push(sessionId, id, idx);
       const base = idx * 3 + 1;
       return `($${base}, $${base + 1}, $${base + 2})`;
     });
     await pool.query(
-      `INSERT INTO game_restaurants (session_id, restaurant_id, display_order) VALUES ${placeholders.join(', ')}`,
+      `INSERT INTO ${table} (session_id, ${col}, display_order) VALUES ${placeholders.join(', ')}`,
       values,
     );
   }
 
-  async getRestaurantIds(sessionId: number): Promise<string[]> {
-    const res = await pool.query<{ restaurant_id: string }>(
-      'SELECT restaurant_id FROM game_restaurants WHERE session_id = $1 ORDER BY display_order',
+  async getEntityIds(sessionId: number, entityType: EntityType): Promise<string[]> {
+    const table = entityType === 'HOTEL' ? 'game_hotels' : 'game_restaurants';
+    const col = entityType === 'HOTEL' ? 'hotel_id' : 'restaurant_id';
+    const res = await pool.query<{ entity_id: string }>(
+      `SELECT ${col} AS entity_id FROM ${table} WHERE session_id = $1 ORDER BY display_order`,
       [sessionId],
     );
-    return res.rows.map((r) => r.restaurant_id);
+    return res.rows.map((r) => r.entity_id);
   }
 
   async recordVote(
     sessionId: number,
     playerId: number,
-    restaurantId: string,
+    entityId: string,
     vote: boolean,
+    entityType: EntityType,
   ): Promise<void> {
+    const col = entityType === 'HOTEL' ? 'hotel_id' : 'restaurant_id';
     await pool.query(
-      `INSERT INTO votes (session_id, player_id, restaurant_id, vote)
+      `INSERT INTO votes (session_id, player_id, ${col}, vote)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (session_id, player_id, restaurant_id) DO NOTHING`,
-      [sessionId, playerId, restaurantId, vote],
+       ON CONFLICT DO NOTHING`,
+      [sessionId, playerId, entityId, vote],
     );
   }
 
   async getVoteSummary(
     sessionId: number,
-  ): Promise<Array<{ restaurantId: string; likeCount: number; dislikeCount: number }>> {
+    entityType: EntityType,
+  ): Promise<Array<{ entityId: string; likeCount: number; dislikeCount: number }>> {
+    const col = entityType === 'HOTEL' ? 'hotel_id' : 'restaurant_id';
     const res = await pool.query<{
-      restaurant_id: string;
+      entity_id: string;
       like_count: string;
       dislike_count: string;
     }>(
-      `SELECT restaurant_id,
+      `SELECT ${col} AS entity_id,
               COUNT(*) FILTER (WHERE vote = true)  AS like_count,
               COUNT(*) FILTER (WHERE vote = false) AS dislike_count
        FROM votes
-       WHERE session_id = $1
-       GROUP BY restaurant_id`,
+       WHERE session_id = $1 AND ${col} IS NOT NULL
+       GROUP BY ${col}`,
       [sessionId],
     );
     return res.rows.map((r) => ({
-      restaurantId: r.restaurant_id,
+      entityId: r.entity_id,
       likeCount: parseInt(r.like_count, 10),
       dislikeCount: parseInt(r.dislike_count, 10),
     }));
   }
 
-  async getPlayerVotesForRestaurant(
+  async getPlayerVotesForEntity(
     sessionId: number,
-    restaurantId: string,
+    entityId: string,
     vote: boolean,
+    entityType: EntityType,
   ): Promise<number[]> {
+    const col = entityType === 'HOTEL' ? 'hotel_id' : 'restaurant_id';
     const res = await pool.query<{ player_id: number }>(
-      'SELECT player_id FROM votes WHERE session_id = $1 AND restaurant_id = $2 AND vote = $3',
-      [sessionId, restaurantId, vote],
+      `SELECT player_id FROM votes WHERE session_id = $1 AND ${col} = $2 AND vote = $3`,
+      [sessionId, entityId, vote],
     );
     return res.rows.map((r) => r.player_id);
   }
 
-  async hasVoted(sessionId: number, playerId: number, restaurantId: string): Promise<boolean> {
+  async hasVoted(
+    sessionId: number,
+    playerId: number,
+    entityId: string,
+    entityType: EntityType,
+  ): Promise<boolean> {
+    const col = entityType === 'HOTEL' ? 'hotel_id' : 'restaurant_id';
     const res = await pool.query<{ exists: boolean }>(
       `SELECT EXISTS(
-         SELECT 1 FROM votes WHERE session_id = $1 AND player_id = $2 AND restaurant_id = $3
+         SELECT 1 FROM votes WHERE session_id = $1 AND player_id = $2 AND ${col} = $3
        ) AS exists`,
-      [sessionId, playerId, restaurantId],
+      [sessionId, playerId, entityId],
     );
     return res.rows[0]?.exists ?? false;
   }

@@ -1,9 +1,10 @@
-import type { GameMode, GameRoom, RoomPlayer, RoomStatus } from '../types/game';
+import type { EntityType, GameMode, GameRoom, RoomPlayer, RoomStatus } from '../types/game';
 
 export interface IRoomRepository {
   create(params: {
     hostUserId: string;
     gameMode: GameMode;
+    entityType: EntityType;
     latitude: number;
     longitude: number;
     priceFilter: number | null;

@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes';
 import guestRoutes from './routes/guestRoutes';
 import roomRoutes from './routes/roomRoutes';
 import restaurantRoutes from './routes/restaurantRoutes';
+import hotelRoutes from './routes/hotelRoutes';
 import { initializeDatabase } from './db/pool';
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/restaurants', restaurantRoutes);
+app.use('/api/hotels', hotelRoutes);
 
 initializeDatabase().catch((error) => {
   console.error('Failed to initialize the database:', error);

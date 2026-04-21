@@ -1,7 +1,7 @@
 import type { IGuestRepository } from '../repositories/IGuestRepository';
 import type { IRoomRepository } from '../repositories/IRoomRepository';
 import type { IUserRepository } from '../repositories/IUserRepository';
-import type { GameMode, GameRoom, RoomPlayer } from '../types/game';
+import type { EntityType, GameMode, GameRoom, RoomPlayer } from '../types/game';
 
 export class RoomService {
   constructor(
@@ -13,6 +13,7 @@ export class RoomService {
   async createRoom(params: {
     hostUserId: string;
     gameMode: GameMode;
+    entityType: EntityType;
     latitude: number;
     longitude: number;
     priceFilter: number | null;
@@ -26,6 +27,7 @@ export class RoomService {
     const room = await this.roomRepository.create({
       hostUserId: params.hostUserId,
       gameMode: params.gameMode,
+      entityType: params.entityType,
       latitude: params.latitude,
       longitude: params.longitude,
       priceFilter: params.priceFilter,
