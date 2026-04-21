@@ -8,7 +8,7 @@ export class UserService {
     return this.userRepository.findAll();
   }
 
-  getUserById(id: number): Promise<User | null> {
+  getUserById(id: string): Promise<User | null> {
     return this.userRepository.findById(id);
   }
 }

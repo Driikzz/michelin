@@ -10,16 +10,19 @@ export interface LoginDto {
 }
 
 export interface JwtPayload {
-  userId: number;
-  username: string;
-  email: string;
+  userId: string;
+  username: string | null;
+  email: string | null;
 }
 
 export interface AuthResponse {
   token: string;
   user: {
-    id: number;
-    username: string;
-    email: string;
+    id: string;
+    username: string | null;
+    email: string | null;
+    xp: number;
+    level: number;
+    streak: number;
   };
 }

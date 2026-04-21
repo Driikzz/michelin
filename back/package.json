@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/src/db/migrations && cp src/db/migrations/*.sql dist/src/db/migrations/",
     "start": "node dist/index.js"
   },
   "keywords": [],

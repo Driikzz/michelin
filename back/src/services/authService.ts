@@ -27,7 +27,17 @@ export class AuthService {
     const payload: JwtPayload = { userId: user.id, username: user.username, email: user.email };
     const token = jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
 
-    return { token, user };
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        xp: user.xp,
+        level: user.level,
+        streak: user.streak,
+      },
+    };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -36,15 +46,20 @@ export class AuthService {
       throw new Error('Invalid email or password');
     }
 
-    const valid = await bcrypt.compare(dto.password, userWithPassword.password_hash);
+    const hash = userWithPassword.password_hash;
+    if (!hash) {
+      throw new Error('Invalid email or password');
+    }
+
+    const valid = await bcrypt.compare(dto.password, hash);
     if (!valid) {
       throw new Error('Invalid email or password');
     }
 
-    const { id, username, email } = userWithPassword;
+    const { id, username, email, xp, level, streak } = userWithPassword;
     const payload: JwtPayload = { userId: id, username, email };
     const token = jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
 
-    return { token, user: { id, username, email } };
+    return { token, user: { id, username, email, xp, level, streak } };
   }
 }
