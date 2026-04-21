@@ -11,4 +11,5 @@ initializeWebSocketServer(server);
 
 server.listen(port, () => {
   console.log(`Express server with WebSocket running on http://localhost:${port}`);
+  console.log(`Swagger UI running on http://localhost:${port}/api/docs`)
 });

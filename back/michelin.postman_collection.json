@@ -1,0 +1,393 @@
+{
+  "info": {
+    "name": "Michelin Game API",
+    "_postman_id": "michelin-game-api",
+    "description": "Full API collection for the Michelin multiplayer game backend. Set the `baseUrl` variable to your server (default: http://localhost:5000) and `token` after login.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "roomId", "value": "", "type": "string" },
+    { "key": "playerId", "value": "", "type": "string" },
+    { "key": "guestId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('token', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.collectionVariables.set('token', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Me (current user)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", ":id"],
+              "variable": [{ "key": "id", "value": "{{playerId}}" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Guests",
+      "item": [
+        {
+          "name": "Create Guest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('guestId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/guests", "host": ["{{baseUrl}}"], "path": ["api", "guests"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"CoolGuest\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Restaurants",
+      "item": [
+        {
+          "name": "Search Restaurants",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/search?lat=45.75&lng=4.83&radius=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "restaurants", "search"],
+              "query": [
+                { "key": "lat", "value": "45.75", "description": "Required — latitude" },
+                { "key": "lng", "value": "4.83", "description": "Required — longitude" },
+                { "key": "radius", "value": "5", "description": "Radius in km (default 5)" },
+                { "key": "q", "value": "", "description": "Text search on name", "disabled": true },
+                { "key": "price", "value": "2", "description": "Price category 1–4", "disabled": true },
+                { "key": "tags", "value": "1,3", "description": "Comma-separated tag IDs", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Tags",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/restaurants/tags", "host": ["{{baseUrl}}"], "path": ["api", "restaurants", "tags"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hotels",
+      "item": [
+        {
+          "name": "Search Hotels",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/hotels/search?lat=45.75&lng=4.83&radius=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hotels", "search"],
+              "query": [
+                { "key": "lat", "value": "45.75", "description": "Required — latitude" },
+                { "key": "lng", "value": "4.83", "description": "Required — longitude" },
+                { "key": "radius", "value": "5", "description": "Radius in km (default 5)" },
+                { "key": "q", "value": "", "description": "Text search on name", "disabled": true },
+                { "key": "price", "value": "2", "description": "Price category 1–4", "disabled": true },
+                { "key": "tags", "value": "1,3", "description": "Comma-separated tag IDs", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Hotel Tags",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/hotels/tags", "host": ["{{baseUrl}}"], "path": ["api", "hotels", "tags"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "Create Room (FAST / RESTAURANT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.roomId) pm.collectionVariables.set('roomId', json.roomId);",
+                  "if (json.playerId) pm.collectionVariables.set('playerId', String(json.playerId));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameMode\": \"FAST\",\n  \"entityType\": \"RESTAURANT\",\n  \"latitude\": 45.75,\n  \"longitude\": 4.83,\n  \"radiusKm\": 5,\n  \"priceFilter\": null,\n  \"tagIds\": [],\n  \"nickname\": \"HostPlayer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Room (CLASSIC / RESTAURANT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameMode\": \"CLASSIC\",\n  \"entityType\": \"RESTAURANT\",\n  \"latitude\": 45.75,\n  \"longitude\": 4.83,\n  \"radiusKm\": 5,\n  \"priceFilter\": 2,\n  \"tagIds\": [],\n  \"nickname\": \"HostPlayer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Room (CHAOS / RESTAURANT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameMode\": \"CHAOS\",\n  \"entityType\": \"RESTAURANT\",\n  \"latitude\": 45.75,\n  \"longitude\": 4.83,\n  \"radiusKm\": 5,\n  \"priceFilter\": null,\n  \"tagIds\": [],\n  \"nickname\": \"HostPlayer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Room (FAST / HOTEL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameMode\": \"FAST\",\n  \"entityType\": \"HOTEL\",\n  \"latitude\": 45.75,\n  \"longitude\": 4.83,\n  \"radiusKm\": 5,\n  \"priceFilter\": null,\n  \"tagIds\": [],\n  \"nickname\": \"HostPlayer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Room",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}"]
+            }
+          }
+        },
+        {
+          "name": "Join Room (as user)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.playerId) pm.collectionVariables.set('playerId', String(json.playerId));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}", "join"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"Player2\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Join Room (as guest)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.playerId) pm.collectionVariables.set('playerId', String(json.playerId));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/{{roomId}}/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "{{roomId}}", "join"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"GuestPlayer\",\n  \"guestId\": \"{{guestId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WebSocket (reference)",
+      "description": "WebSocket events are not testable via HTTP. Connect to ws://localhost:5000?token=<JWT>&roomId=<UUID> (or ?guestId=<UUID>&roomId=<UUID>). All messages use JSON: { \"event\": \"...\", \"payload\": { ... } }",
+      "item": [
+        {
+          "name": "WS connection URL (user)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ws?token={{token}}&roomId={{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ws"],
+              "query": [
+                { "key": "token", "value": "{{token}}" },
+                { "key": "roomId", "value": "{{roomId}}" }
+              ]
+            },
+            "description": "Not an HTTP request — shows the WS upgrade URL. Use a WebSocket client (e.g. Postman WS, wscat, browser) to connect.\n\nEvents to send after connecting:\n\n**room:join**\n```json\n{ \"event\": \"room:join\", \"payload\": {} }\n```\n\n**room:start** (host only)\n```json\n{ \"event\": \"room:start\", \"payload\": {} }\n```\n\n**game:vote**\n```json\n{ \"event\": \"game:vote\", \"payload\": { \"sessionId\": 1, \"entityId\": \"<uuid>\", \"vote\": true } }\n```\n\n**game:add_entity** (CLASSIC mode, BUILDING phase)\n```json\n{ \"event\": \"game:add_entity\", \"payload\": { \"sessionId\": 1, \"entityId\": \"<uuid>\" } }\n```\n\nEvents received from server:\n- `room:update` — player list / phase change\n- `game:start` — { phase, sessionId, entities, entityType, timerSeconds, timerEndsAt }\n- `game:timer_update` — { remaining }\n- `game:vote_update` — { entityId, likeCount, entityType }\n- `game:end` — { winnerId, entity, entityType, wasRandom, xpAwards }\n- `error` — { message }"
+          }
+        },
+        {
+          "name": "WS connection URL (guest)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ws?guestId={{guestId}}&roomId={{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ws"],
+              "query": [
+                { "key": "guestId", "value": "{{guestId}}" },
+                { "key": "roomId", "value": "{{roomId}}" }
+              ]
+            },
+            "description": "WS upgrade URL for guests. Same events as user connection."
+          }
+        }
+      ]
+    }
+  ]
+}
