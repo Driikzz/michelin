@@ -1,19 +1,16 @@
 import { NavLink } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { FlowProgress } from './FlowProgress';
 
 export function TopNav() {
-  const { t } = useTranslation();
-
   return (
     <nav className="flex flex-col w-full sticky top-0 z-50 bg-surface-container-low/95 backdrop-blur-md border-b border-outline-variant/10">
-      <div className="flex justify-between items-center w-full px-6 md:px-8 py-3">
-        {/* Brand */}
-        <NavLink to="/lobby" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 bg-primary-container rounded-lg flex items-center justify-center">
-            <span className="material-symbols-outlined text-on-primary" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>casino</span>
-          </div>
-          <span className="text-lg font-black text-on-surface uppercase tracking-tighter">Roulette</span>
+      <div className="flex items-center justify-end px-4 py-1.5">
+        <NavLink
+          to="/profile"
+          className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface hover:bg-surface-container-highest transition-all"
+          aria-label="Mon profil"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
         </NavLink>
 
         {/* Desktop nav links */}
@@ -54,8 +51,6 @@ export function TopNav() {
           </NavLink>
         </div>
       </div>
-
-      {/* Flow progress — visible on all screens */}
       <div className="border-t border-outline-variant/10">
         <FlowProgress />
       </div>

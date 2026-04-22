@@ -21,9 +21,9 @@
       "fast": "Rapide",
       "classic": "Classique",
       "chaos": "Chaos",
-      "fastDesc": "L'appli choisit pour toi",
-      "classicDesc": "Ajoute tes coups de cœur",
-      "chaosDesc": "Full random, no rules"
+      "FASTDesc": "L'appli choisit pour toi",
+      "CLASSICDesc": "Ajoute tes coups de cœur",
+      "CHAOSDesc": "Full random, no rules"
     },
     "session": "Session #{{id}}",
     "tonight": "CE SOIR À 20H",

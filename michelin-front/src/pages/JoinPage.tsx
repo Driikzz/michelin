@@ -135,7 +135,7 @@ export function JoinPage() {
           <input
             type="text"
             value={nickname}
-            onChange={e => setNickname(e.target.value)}
+            onChange={e => setNickname(e.target.value.replace(/[<>"]/g, '').slice(0, 32))}
             placeholder="Entre ton pseudo"
             maxLength={24}
             className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-2xl py-4 px-5 text-base text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:border-primary-container/40 transition-all"

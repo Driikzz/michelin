@@ -24,9 +24,9 @@ export class HotelRepository implements IHotelRepository {
     let tagJoin = '';
     let tagHaving = '';
 
-    if (params.price !== undefined) {
-      conditions.push(`h.price_category = $${i++}`);
-      values.push(params.price);
+    if (params.prices && params.prices.length > 0) {
+      conditions.push(`h.price_category = ANY($${i++}::smallint[])`);
+      values.push(params.prices);
     }
 
     if (params.query) {
@@ -38,7 +38,7 @@ export class HotelRepository implements IHotelRepository {
       tagJoin = 'JOIN hotel_tags ht ON ht.hotel_id = h.id';
       conditions.push(`ht.tag_id = ANY($${i++})`);
       values.push(params.tags);
-      tagHaving = `HAVING COUNT(DISTINCT ht.tag_id) = ${params.tags.length}`;
+      tagHaving = '';
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

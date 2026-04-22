@@ -16,7 +16,7 @@ export class RoomService {
     entityType: EntityType;
     latitude: number;
     longitude: number;
-    priceFilter: number | null;
+    priceFilters: number[];
     radiusKm: number;
     tagIds: number[];
     nickname: string;
@@ -30,7 +30,7 @@ export class RoomService {
       entityType: params.entityType,
       latitude: params.latitude,
       longitude: params.longitude,
-      priceFilter: params.priceFilter,
+      priceFilters: params.priceFilters,
       radiusKm: params.radiusKm,
       tagIds: params.tagIds,
     });

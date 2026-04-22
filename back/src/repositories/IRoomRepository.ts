@@ -7,7 +7,7 @@ export interface IRoomRepository {
     entityType: EntityType;
     latitude: number;
     longitude: number;
-    priceFilter: number | null;
+    priceFilters: number[];
     radiusKm: number;
     tagIds: number[];
   }): Promise<GameRoom>;

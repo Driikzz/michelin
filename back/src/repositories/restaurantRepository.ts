@@ -23,9 +23,9 @@ export class RestaurantRepository implements IRestaurantRepository {
     let tagJoin = '';
     let tagHaving = '';
 
-    if (params.price !== undefined) {
-      conditions.push(`r.price_category = $${i++}`);
-      values.push(params.price);
+    if (params.prices && params.prices.length > 0) {
+      conditions.push(`r.price_category = ANY($${i++}::smallint[])`);
+      values.push(params.prices);
     }
 
     if (params.query) {
@@ -37,7 +37,7 @@ export class RestaurantRepository implements IRestaurantRepository {
       tagJoin = 'JOIN restaurant_tags rt ON rt.restaurant_id = r.id';
       conditions.push(`rt.tag_id = ANY($${i++})`);
       values.push(params.tags);
-      tagHaving = `HAVING COUNT(DISTINCT rt.tag_id) = ${params.tags.length}`;
+      tagHaving = '';
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

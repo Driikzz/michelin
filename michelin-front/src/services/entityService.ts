@@ -6,8 +6,9 @@ export interface EntitySearchParams {
   lng: number;
   radius?: number;
   q?: string;
-  price?: number;
+  prices?: number[];
   tags?: string; // comma-separated tag IDs
+  limit?: number;
 }
 
 export const entityService = {
@@ -19,8 +20,9 @@ export const entityService = {
         lng: params.lng,
         ...(params.radius !== undefined && { radius: params.radius }),
         ...(params.q !== undefined && params.q !== '' && { q: params.q }),
-        ...(params.price !== undefined && { price: params.price }),
+        ...(params.prices && params.prices.length > 0 && { prices: params.prices.join(',') }),
         ...(params.tags !== undefined && params.tags !== '' && { tags: params.tags }),
+        ...(params.limit !== undefined && { limit: params.limit }),
       },
     });
     return data.restaurants ?? data.hotels ?? [];

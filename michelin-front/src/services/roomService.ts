@@ -7,7 +7,7 @@ export interface CreateRoomParams {
   latitude: number;
   longitude: number;
   radiusKm?: number;
-  priceFilter?: number | null;
+  priceFilters?: number[];
   tagIds?: number[];
   nickname?: string;
 }
