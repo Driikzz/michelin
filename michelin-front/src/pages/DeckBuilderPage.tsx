@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import * as maptilersdk from '@maptiler/sdk';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 import { TopNav } from '../components/layout/TopNav';
 import { RestaurantCard } from '../components/game/RestaurantCard';
 import { CountdownTimer } from '../components/ui/CountdownTimer';
@@ -8,6 +10,10 @@ import { EntityDetailModal } from '../components/game/EntityDetailModal';
 import { useGame, entityImage, michelinStarCount, priceLabel } from '../contexts/GameContext';
 import { entityService } from '../services/entityService';
 import type { Entity } from '../types/api';
+
+maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_KEY ?? '';
+
+const PAGE_SIZE = 6;
 
 function toCardShape(entity: Entity) {
   return {
@@ -23,6 +29,20 @@ function toCardShape(entity: Entity) {
   };
 }
 
+function makeMarkerEl(inDeck: boolean): HTMLDivElement {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    width: 28px; height: 28px; border-radius: 50%;
+    background: ${inDeck ? '#16a34a' : '#ba0b2f'};
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.15s, background 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  `;
+  return el;
+}
+
 export function DeckBuilderPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -33,6 +53,13 @@ export function DeckBuilderPage() {
   const [deck, setDeck] = useState<Set<string>>(new Set());
   const [fetching, setFetching] = useState(false);
   const [detailEntity, setDetailEntity] = useState<Entity | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Map refs
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maptilersdk.Map | null>(null);
+  const mapReadyRef = useRef(false);
+  const markersRef = useRef<{ marker: maptilersdk.Marker; el: HTMLDivElement; entityId: string }[]>([]);
 
   const isHost = game.playerId !== null && game.playerId === game.hostPlayerId;
 
@@ -46,7 +73,7 @@ export function DeckBuilderPage() {
           lng: game.longitude,
           radius: game.radiusKm,
           ...(q !== undefined && q !== '' && { q }),
-          ...(!q && { limit: 20 }),
+          limit: 40,
         });
         setResults(data);
       } catch {
@@ -58,24 +85,116 @@ export function DeckBuilderPage() {
     [game.latitude, game.longitude, game.radiusKm, game.entityType],
   );
 
-  // Initial load of nearby entities (no query, limit 20)
-  useEffect(() => {
-    void fetchEntities();
-  }, [fetchEntities]);
+  useEffect(() => { void fetchEntities(); }, [fetchEntities]);
 
-  // Search when 2+ chars typed
   useEffect(() => {
     if (search.length < 2) return;
-    const timer = setTimeout(() => {
-      void fetchEntities(search);
-    }, 300);
+    const timer = setTimeout(() => { void fetchEntities(search); }, 300);
     return () => clearTimeout(timer);
   }, [search, fetchEntities]);
 
-  // Navigate to /roulette when voting starts
+  // Reset pagination when search changes
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search]);
+
   useEffect(() => {
     if (game.phase === 'VOTING') navigate('/roulette');
   }, [game.phase, navigate]);
+
+  // Init map once
+  useEffect(() => {
+    if (!mapContainerRef.current || !game.latitude || !game.longitude || mapRef.current) return;
+
+    const center: [number, number] = [game.longitude, game.latitude];
+
+    const map = new maptilersdk.Map({
+      container: mapContainerRef.current,
+      style: maptilersdk.MapStyle.STREETS,
+      center,
+      zoom: 13,
+      attributionControl: false,
+      navigationControl: false,
+      projection: 'mercator',
+    });
+
+    map.on('load', () => {
+      // User location dot
+      map.addSource('room-center', {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: { type: 'Point', coordinates: center }, properties: {} },
+      });
+      map.addLayer({
+        id: 'room-center-halo', type: 'circle', source: 'room-center',
+        paint: { 'circle-radius': 14, 'circle-color': '#ba0b2f', 'circle-opacity': 0.15 },
+      });
+      map.addLayer({
+        id: 'room-center-dot', type: 'circle', source: 'room-center',
+        paint: {
+          'circle-radius': 6, 'circle-color': '#ba0b2f',
+          'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
+        },
+      });
+      mapReadyRef.current = true;
+    });
+
+    mapRef.current = map;
+    return () => {
+      markersRef.current.forEach(({ marker }) => marker.remove());
+      markersRef.current = [];
+      map.remove();
+      mapRef.current = null;
+      mapReadyRef.current = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.latitude, game.longitude]);
+
+  // Rebuild markers when results change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const rebuild = () => {
+      markersRef.current.forEach(({ marker }) => marker.remove());
+      markersRef.current = [];
+
+      const withCoords = results.filter(e => e.latitude != null && e.longitude != null);
+      if (withCoords.length === 0) return;
+
+      if (game.latitude && game.longitude) {
+        const bounds = new maptilersdk.LngLatBounds();
+        bounds.extend([game.longitude, game.latitude]);
+        withCoords.forEach(e => bounds.extend([e.longitude!, e.latitude!]));
+        map.fitBounds(bounds, { padding: 55, maxZoom: 15, duration: 500 });
+      }
+
+      withCoords.forEach(entity => {
+        const el = makeMarkerEl(deck.has(entity.id));
+        el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.2)'; });
+        el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+        el.addEventListener('click', () => setDetailEntity(entity));
+
+        const marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
+          .setLngLat([entity.longitude!, entity.latitude!])
+          .addTo(map);
+
+        markersRef.current.push({ marker, el, entityId: entity.id });
+      });
+    };
+
+    if (mapReadyRef.current) {
+      rebuild();
+    } else {
+      map.once('load', rebuild);
+    }
+  // deck intentionally excluded — colors are updated separately without full rebuild
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
+
+  // Update marker colors when deck changes without rebuilding markers
+  useEffect(() => {
+    markersRef.current.forEach(({ el, entityId }) => {
+      el.style.background = deck.has(entityId) ? '#16a34a' : '#ba0b2f';
+    });
+  }, [deck]);
 
   const toggleDeck = (entityId: string) => {
     if (deck.has(entityId)) {
@@ -86,19 +205,17 @@ export function DeckBuilderPage() {
     }
   };
 
-  const handleLaunch = () => {
-    game.sendStartGame();
-  };
+  const handleLaunch = () => { game.sendStartGame(); };
+  const handleTimerExpire = () => { if (isHost) game.sendStartGame(); };
 
-  const handleTimerExpire = () => {
-    if (isHost) game.sendStartGame();
-  };
+  const visibleResults = results.slice(0, visibleCount);
+  const hasMore = results.length > visibleCount;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
       <TopNav />
 
-      <header className="px-6 md:px-10 pt-6 pb-4 max-w-6xl mx-auto w-full">
+      <header className="px-6 md:px-10 pt-6 pb-4 max-w-7xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-on-surface tracking-tight">
@@ -112,119 +229,104 @@ export function DeckBuilderPage() {
         </div>
       </header>
 
-      <main className="flex-grow px-6 md:px-10 pb-8 max-w-6xl mx-auto w-full flex flex-col gap-8">
+      <main className="flex-grow px-6 md:px-10 pb-8 max-w-7xl mx-auto w-full">
 
-        {/* Search */}
-        <div className="relative flex items-center">
-          <span className="material-symbols-outlined absolute left-4 text-on-surface/40" style={{ fontSize: '20px' }}>search</span>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t('deck.searchPlaceholder')}
-            className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-2xl py-4 pl-12 pr-4 text-base text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:border-primary-container/40 focus:bg-white transition-all shadow-[0_4px_20px_rgba(28,27,27,0.04)]"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-4 text-on-surface/40 hover:text-on-surface transition-colors"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-            </button>
-          )}
-        </div>
+        {/* 2-col on desktop, single col on mobile — map reordered via flex order */}
+        <div className="flex flex-col lg:grid lg:grid-cols-[1fr_420px] lg:gap-8 gap-6">
 
-        {/* Cards grid */}
-        {fetching && results.length === 0 ? (
-          <div className="flex justify-center py-12">
-            <span className="material-symbols-outlined animate-spin text-primary-container text-4xl">progress_activity</span>
+          {/* ── Map column — below cards on mobile, right column sticky on desktop ── */}
+          <div className="order-last lg:order-2">
+            <div className="lg:sticky lg:top-6">
+              <div className="rounded-2xl overflow-hidden border border-outline-variant/20 shadow-[0_8px_30px_rgba(28,27,27,0.08)] h-[220px] lg:h-[480px]">
+                <div ref={mapContainerRef} className="w-full h-full" />
+              </div>
+
+              {/* Map legend — desktop only */}
+              <div className="hidden lg:flex mt-3 items-center gap-4 px-1">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#ba0b2f] border border-white shadow-sm" />
+                  <span className="text-[11px] font-bold text-on-surface/50">Non ajouté</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#16a34a] border border-white shadow-sm" />
+                  <span className="text-[11px] font-bold text-on-surface/50">Dans le deck</span>
+                </div>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-[11px] font-bold text-on-surface/40">Clic → détails</span>
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {results.map(entity => (
-              <RestaurantCard
-                key={entity.id}
-                restaurant={toCardShape(entity)}
-                onAdd={() => toggleDeck(entity.id)}
-                onView={() => setDetailEntity(entity)}
-                added={deck.has(entity.id)}
+
+          {/* ── Left column: search + grid — order-1 on mobile, order-1 on desktop ── */}
+          <div className="order-1 lg:order-1 flex flex-col gap-6">
+
+            {/* Search */}
+            <div className="relative flex items-center">
+              <span className="material-symbols-outlined absolute left-4 text-on-surface/40" style={{ fontSize: '20px' }}>search</span>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={t('deck.searchPlaceholder')}
+                className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-2xl py-4 pl-12 pr-4 text-base text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:border-primary-container/40 focus:bg-white transition-all shadow-[0_4px_20px_rgba(28,27,27,0.04)]"
               />
-            ))}
-            {results.length === 0 && !fetching && (
-              <p className="text-on-surface/40 text-sm col-span-2 text-center py-8">
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-4 text-on-surface/40 hover:text-on-surface transition-colors"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                </button>
+              )}
+            </div>
+
+            {/* Cards grid */}
+            {fetching && results.length === 0 ? (
+              <div className="flex justify-center py-12">
+                <span className="material-symbols-outlined animate-spin text-primary-container text-4xl">progress_activity</span>
+              </div>
+            ) : results.length === 0 && !fetching ? (
+              <p className="text-on-surface/40 text-sm text-center py-8">
                 Aucun établissement trouvé dans ce rayon.
               </p>
+            ) : (
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-on-surface/40 uppercase tracking-widest">
+                    {visibleResults.length} / {results.length} établissements
+                  </p>
+                  {fetching && (
+                    <span className="material-symbols-outlined animate-spin text-primary-container" style={{ fontSize: '16px' }}>progress_activity</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-5">
+                  {visibleResults.map(entity => (
+                    <RestaurantCard
+                      key={entity.id}
+                      restaurant={toCardShape(entity)}
+                      onAdd={() => toggleDeck(entity.id)}
+                      onView={() => setDetailEntity(entity)}
+                      added={deck.has(entity.id)}
+                    />
+                  ))}
+                </div>
+
+                {hasMore && (
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+                    className="w-full py-4 rounded-2xl border-2 border-dashed border-outline-variant/30 text-on-surface/50 font-black text-sm uppercase tracking-widest hover:border-primary-container/40 hover:text-primary-container transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>expand_more</span>
+                    Voir plus ({results.length - visibleCount} restants)
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        )}
 
-        {/* Nearby carousel (reuse search results in compact form) */}
-        {results.length > 0 && (
-          <section className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-on-surface tracking-tight">{t('deck.exploreNeighborhood')}</h2>
-                <p className="text-xs font-bold text-primary-container uppercase tracking-widest mt-0.5">
-                  {results[0]?.city ?? 'Aux alentours'}
-                </p>
-              </div>
-            </div>
-
-            {/* Map placeholder */}
-            <div className="relative w-full h-44 md:h-56 bg-surface-container-high rounded-2xl overflow-hidden border border-outline-variant/10">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2 text-on-surface/20">
-                  <span className="material-symbols-outlined text-[48px]" style={{ fontVariationSettings: "'FILL' 0" }}>map</span>
-                  <span className="text-xs uppercase tracking-widest font-bold">Carte interactive</span>
-                </div>
-              </div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <div className="relative flex items-center justify-center">
-                  <div className="absolute w-10 h-10 bg-primary-container/20 rounded-full animate-ping" />
-                  <div className="w-4 h-4 bg-primary-container rounded-full border-2 border-white shadow-lg" />
-                </div>
-              </div>
-            </div>
-
-            {/* Compact carousel */}
-            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1">
-              {results.slice(0, 8).map(entity => (
-                <div
-                  key={entity.id}
-                  onClick={() => toggleDeck(entity.id)}
-                  className={`flex-shrink-0 w-48 rounded-2xl p-4 border cursor-pointer transition-all group ${
-                    deck.has(entity.id)
-                      ? 'bg-primary-container/5 border-primary-container/30'
-                      : 'bg-surface-container-lowest border-outline-variant/20 hover:border-outline-variant/50'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-on-surface text-sm leading-tight">{entity.name}</h4>
-                    <div className="flex gap-0.5 shrink-0 ml-1">
-                      {Array.from({ length: michelinStarCount(entity.michelin_rank) }).map((_, i) => (
-                        <span key={i} className="material-symbols-outlined text-primary-container" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>star</span>
-                      ))}
-                      {michelinStarCount(entity.michelin_rank) === 0 && (
-                        <span className="material-symbols-outlined text-primary-container" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>award_star</span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface/50 font-bold mb-2">
-                    {entity.tags[0]?.name ?? entity.city ?? ''}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-on-surface/50 font-bold">{priceLabel(entity.price_category)}</span>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${deck.has(entity.id) ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface/40 group-hover:bg-primary-container/20 group-hover:text-primary-container'}`}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>
-                        {deck.has(entity.id) ? 'check' : 'add'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        </div>
       </main>
 
       {/* Mobile bottom CTA */}

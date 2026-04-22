@@ -39,7 +39,7 @@ export function RestaurantCard({ restaurant, onAdd, onView, added }: RestaurantC
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent opacity-90" />
       </div>
-      <div className="p-6 flex flex-col gap-4 -mt-8 z-10 relative bg-surface-container-lowest rounded-t-xl mx-3">
+      <div className="p-4 md:p-6 flex flex-col gap-3 md:gap-4 -mt-8 z-10 relative bg-surface-container-lowest rounded-t-xl mx-3">
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-2xl font-semibold text-on-surface tracking-tight">{restaurant.name}</h2>
@@ -51,7 +51,7 @@ export function RestaurantCard({ restaurant, onAdd, onView, added }: RestaurantC
           </div>
           <MichelinStars count={restaurant.stars} size="md" />
         </div>
-        <p className="text-sm leading-relaxed text-secondary border-l-2 border-primary-container/30 pl-4 italic">
+        <p className="text-sm leading-relaxed text-secondary border-l-2 border-primary-container/30 pl-4 italic line-clamp-2 md:line-clamp-none">
           {restaurant.quote}
         </p>
         <div className="flex gap-3">
