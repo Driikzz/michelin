@@ -1,23 +1,109 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TopNav } from '../components/layout/TopNav';
-import { useGame, entityImage, michelinStarCount } from '../contexts/GameContext';
+import { useGame, entityImage, michelinStarCount, priceLabel } from '../contexts/GameContext';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../contexts/ToastContext';
+import { entityService } from '../services/entityService';
+import type { Entity } from '../types/api';
+
+function NearbyHotelCard({ hotel }: { hotel: Entity }) {
+  const image = entityImage(hotel, 'https://images.unsplash.com/photo-1455587734955-081b22074882?w=600&q=80');
+  const keys = (hotel as Entity & { keys_level?: number }).keys_level;
+  const neighborhood = (hotel as Entity & { neighborhood?: string }).neighborhood;
+
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(28,27,27,0.08)] border border-outline-variant/10 flex flex-col group">
+      {/* Image */}
+      <div className="relative h-36 overflow-hidden shrink-0">
+        <img
+          src={image}
+          alt={hotel.name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+        />
+        {keys && keys > 0 && (
+          <div className="absolute top-2 left-2 flex gap-0.5 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
+            {Array.from({ length: keys }).map((_, i) => (
+              <span key={i} className="material-symbols-outlined text-yellow-300" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>key</span>
+            ))}
+          </div>
+        )}
+        {hotel.price_category && (
+          <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full text-white text-[11px] font-bold">
+            {priceLabel(hotel.price_category)}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-4 flex flex-col gap-2 flex-1">
+        <div>
+          <h3 className="font-black text-sm text-on-surface leading-tight line-clamp-1">{hotel.name}</h3>
+          <p className="text-xs text-on-surface/50 mt-0.5 flex items-center gap-1">
+            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>location_on</span>
+            {neighborhood ?? hotel.city ?? '—'}
+          </p>
+        </div>
+
+        {hotel.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {hotel.tags.slice(0, 2).map((tag) => (
+              <span key={tag.id} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface/60 border border-outline-variant/15">
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={() => hotel.website_url && window.open(hotel.website_url, '_blank', 'noopener,noreferrer')}
+          disabled={!hotel.website_url}
+          className="mt-auto w-full py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 bg-surface-container-low text-on-surface hover:bg-primary-container hover:text-on-primary disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>open_in_new</span>
+          Voir l'hôtel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function VerdictPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const game = useGame();
   const { user } = useAuth();
-  const [shared, setShared] = useState(false);
+  const { addToast } = useToast();
+  const [nearbyHotels, setNearbyHotels] = useState<Entity[]>([]);
 
   const winner = game.winner;
   const entity = winner?.entity;
 
+  useEffect(() => {
+    if (!entity?.latitude || !entity?.longitude) return;
+    entityService.getNearbyHotels({
+      lat: entity.latitude,
+      lng: entity.longitude,
+      radius: 5,
+      ...(entity.price_category ? { prices: [entity.price_category] } : {}),
+      limit: 3,
+    })
+      .then(setNearbyHotels)
+      .catch(() => setNearbyHotels([]));
+  }, [entity?.latitude, entity?.longitude, entity?.price_category]);
+
   const handleShare = () => {
-    setShared(true);
-    setTimeout(() => setShared(false), 2000);
+    const url = entity?.website_url;
+    if (!url) {
+      addToast('error', 'Aucun site web disponible pour ce restaurant.');
+      return;
+    }
+    void navigator.clipboard.writeText(url).then(() => {
+      addToast('success', `Lien copié : ${url}`);
+    }).catch(() => {
+      addToast('error', 'Impossible de copier le lien.');
+    });
   };
 
   const handleNewGame = () => {
@@ -66,14 +152,10 @@ export function VerdictPage() {
             </div>
             <button
               onClick={handleShare}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full font-bold text-[11px] uppercase tracking-wider transition-all whitespace-nowrap ${
-                shared ? 'bg-green-500 text-white' : 'bg-white/15 backdrop-blur-md border border-white/20 text-white hover:bg-white/25'
-              }`}
+              className="flex items-center gap-2 px-3 py-2 rounded-full font-bold text-[11px] uppercase tracking-wider transition-all whitespace-nowrap bg-white/15 backdrop-blur-md border border-white/20 text-white hover:bg-white/25"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>
-                {shared ? 'check' : 'share'}
-              </span>
-              <span className="hidden sm:inline">{shared ? 'Partagé !' : t('verdict.shareResult')}</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>share</span>
+              <span className="hidden sm:inline">{t('verdict.shareResult')}</span>
             </button>
           </div>
 
@@ -112,7 +194,11 @@ export function VerdictPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <button className="bg-primary-container hover:bg-primary text-white font-black py-3.5 px-7 rounded-2xl shadow-[0_8px_30px_rgba(186,11,47,0.4)] transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-sm uppercase tracking-widest">
+              <button
+                onClick={() => entity.website_url && window.open(entity.website_url, '_blank', 'noopener,noreferrer')}
+                disabled={!entity.website_url}
+                className="bg-primary-container hover:bg-primary text-white font-black py-3.5 px-7 rounded-2xl shadow-[0_8px_30px_rgba(186,11,47,0.4)] transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-sm uppercase tracking-widest disabled:opacity-40 disabled:pointer-events-none"
+              >
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark_add</span>
                 {t('verdict.reserveNow')}
               </button>
@@ -214,10 +300,29 @@ export function VerdictPage() {
         </div>
       </main>
 
+      {/* Nearby Hotels */}
+      {nearbyHotels.length > 0 && (
+        <section className="w-full max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pb-6 md:pb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="material-symbols-outlined text-primary-container" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>hotel</span>
+            <h2 className="text-xs font-black uppercase tracking-widest text-on-surface/50">Hôtels à proximité</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {nearbyHotels.map((hotel) => (
+              <NearbyHotelCard key={hotel.id} hotel={hotel} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Mobile CTA */}
       <div className="lg:hidden fixed bottom-0 left-0 w-full z-50">
         <div className="bg-white/95 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-6 flex flex-col gap-2">
-          <button className="w-full bg-primary-container text-on-primary py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-[0_8px_20px_rgba(186,11,47,0.25)] hover:bg-primary transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+          <button
+            onClick={() => entity.website_url && window.open(entity.website_url, '_blank', 'noopener,noreferrer')}
+            disabled={!entity.website_url}
+            className="w-full bg-primary-container text-on-primary py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-[0_8px_20px_rgba(186,11,47,0.25)] hover:bg-primary transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
+          >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark_add</span>
             <span>{t('verdict.reserveNow')}</span>
           </button>

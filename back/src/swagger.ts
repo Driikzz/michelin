@@ -373,6 +373,36 @@ export const swaggerDocument: OpenAPIV3.Document = {
         },
       },
     },
+    '/hotels/nearby': {
+      get: {
+        tags: ['Hotels'],
+        summary: 'Get hotels near a point (used on verdict page)',
+        description: 'Returns 2–3 hotels within `radius` km of the given coordinates, optionally filtered by price category. Designed to suggest nearby hotels after a restaurant verdict.',
+        parameters: [
+          { name: 'lat', in: 'query', required: true, schema: { type: 'number' }, description: 'Latitude of the reference point (e.g. winning restaurant)' },
+          { name: 'lng', in: 'query', required: true, schema: { type: 'number' }, description: 'Longitude of the reference point' },
+          { name: 'radius', in: 'query', schema: { type: 'number', default: 5 }, description: 'Search radius in km (default 5)' },
+          { name: 'prices', in: 'query', schema: { type: 'string' }, description: 'Comma-separated price categories to include, e.g. "2,3". Omit for no restriction.' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 3, maximum: 10 }, description: 'Max hotels to return (default 3, max 10)' },
+        ],
+        responses: {
+          '200': {
+            description: 'Nearby hotels',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    hotels: { type: 'array', items: { $ref: '#/components/schemas/Hotel' } },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Missing lat/lng', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+        },
+      },
+    },
     '/hotels/tags': {
       get: {
         tags: ['Hotels'],

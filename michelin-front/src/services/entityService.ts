@@ -28,6 +28,25 @@ export const entityService = {
     return data.restaurants ?? data.hotels ?? [];
   },
 
+  async getNearbyHotels(params: {
+    lat: number;
+    lng: number;
+    radius?: number;
+    prices?: number[];
+    limit?: number;
+  }): Promise<Entity[]> {
+    const { data } = await api.get<{ hotels: Entity[] }>('/api/hotels/nearby', {
+      params: {
+        lat: params.lat,
+        lng: params.lng,
+        ...(params.radius !== undefined && { radius: params.radius }),
+        ...(params.prices && params.prices.length > 0 && { prices: params.prices.join(',') }),
+        ...(params.limit !== undefined && { limit: params.limit }),
+      },
+    });
+    return data.hotels;
+  },
+
   async getTags(entityType: EntityType): Promise<Tag[]> {
     const path = entityType === 'HOTEL' ? '/api/hotels/tags' : '/api/restaurants/tags';
     const { data } = await api.get<{ tags: Tag[] }>(path);

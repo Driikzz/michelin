@@ -39,6 +39,34 @@ export const hotelController = {
     }
   },
 
+  async getNearby(req: Request, res: Response): Promise<void> {
+    const lat = req.query['lat'] ? Number(req.query['lat']) : undefined;
+    const lng = req.query['lng'] ? Number(req.query['lng']) : undefined;
+    const radius = req.query['radius'] ? Number(req.query['radius']) : 5;
+    const pricesParam = req.query['prices'] as string | undefined;
+    const allPrices = pricesParam ? pricesParam.split(',').map(Number).filter(Boolean) : undefined;
+    const prices = allPrices && allPrices.length > 0 && allPrices.length < 4 ? allPrices : undefined;
+    const limit = req.query['limit'] ? Math.min(Number(req.query['limit']), 10) : 3;
+
+    if (lat === undefined || lng === undefined) {
+      res.status(400).json({ error: 'lat and lng are required' });
+      return;
+    }
+
+    try {
+      const hotels = await hotelService.search({
+        lat,
+        lng,
+        radius,
+        ...(prices && { prices }),
+        limit,
+      });
+      res.json({ hotels });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  },
+
   async getTags(_req: Request, res: Response): Promise<void> {
     try {
       const tags = await hotelService.getAllTags();
