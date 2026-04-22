@@ -1,16 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import * as maptilersdk from '@maptiler/sdk';
-import '@maptiler/sdk/dist/maptiler-sdk.css';
 import { TopNav } from '../components/layout/TopNav';
+import { GlobeHistory } from '../components/ui/GlobeHistory';
 import { useAuth } from '../hooks/useAuth';
 import { userService } from '../services/userService';
 import type { GameHistoryEntry } from '../types/api';
-
-maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_KEY ?? '';
-
-const PARIS: [number, number] = [2.35, 48.85];
 
 function xpProgress(xp: number, level: number) {
   const xpStart = level * level * 10;
@@ -35,23 +30,6 @@ function relativeDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
-function makeMarkerEl(index: number, active: boolean): HTMLDivElement {
-  const el = document.createElement('div');
-  el.style.cssText = `
-    width: 28px; height: 28px; border-radius: 50%;
-    background: ${active ? '#8f0020' : '#ba0b2f'};
-    border: 2.5px solid #ffffff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 11px; font-weight: 900;
-    cursor: pointer; transition: transform 0.15s;
-    font-family: system-ui, sans-serif;
-    transform: ${active ? 'scale(1.25)' : 'scale(1)'};
-  `;
-  el.textContent = String(index + 1);
-  return el;
-}
-
 export function ProfilePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -60,11 +38,7 @@ export function ProfilePage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maptilersdk.Map | null>(null);
-  const markersRef = useRef<{ marker: maptilersdk.Marker; el: HTMLDivElement }[]>([]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const historyRef = useRef<GameHistoryEntry[]>([]);
 
   useEffect(() => {
     refreshUser().catch(() => {});
@@ -75,100 +49,6 @@ export function ProfilePage() {
       .finally(() => setHistoryLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Sync historyRef so map callbacks can access latest history without re-init
-  useEffect(() => { historyRef.current = history; }, [history]);
-
-  // Build / rebuild map whenever history changes
-  useEffect(() => {
-    if (!mapContainerRef.current || historyLoading) return;
-
-    // Destroy previous instance
-    if (mapRef.current) {
-      markersRef.current.forEach(({ marker }) => marker.remove());
-      markersRef.current = [];
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
-
-    const map = new maptilersdk.Map({
-      container: mapContainerRef.current,
-      style: maptilersdk.MapStyle.STREETS,
-      center: PARIS,
-      zoom: 5,
-      attributionControl: false,
-      navigationControl: false,
-      projection: 'mercator',
-    });
-
-    mapRef.current = map;
-
-    map.on('load', () => {
-      const entries = historyRef.current;
-      const withCoords = entries.filter(e => e.latitude != null && e.longitude != null);
-
-      if (withCoords.length === 0) return;
-
-      // Fit bounds to all markers
-      const bounds = new maptilersdk.LngLatBounds();
-      withCoords.forEach(e => bounds.extend([e.longitude!, e.latitude!]));
-
-      if (withCoords.length === 1) {
-        map.flyTo({ center: [withCoords[0].longitude!, withCoords[0].latitude!], zoom: 13, duration: 0 });
-      } else {
-        map.fitBounds(bounds, { padding: 60, duration: 0, maxZoom: 14 });
-      }
-
-      // Draw connective line between markers (chronological path, oldest first)
-      const coords = [...withCoords].reverse().map(e => [e.longitude!, e.latitude!] as [number, number]);
-      if (coords.length >= 2) {
-        map.addSource('path', {
-          type: 'geojson',
-          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} },
-        });
-        map.addLayer({
-          id: 'path-line',
-          type: 'line',
-          source: 'path',
-          paint: { 'line-color': '#ba0b2f', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [3, 3] },
-        });
-      }
-
-      // Add numbered markers
-      entries.forEach((entry, idx) => {
-        if (entry.latitude == null || entry.longitude == null) return;
-
-        const el = makeMarkerEl(idx, false);
-        const marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
-          .setLngLat([entry.longitude, entry.latitude])
-          .addTo(map);
-
-        el.addEventListener('click', () => {
-          setActiveIndex(idx);
-          cardRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        });
-
-        markersRef.current.push({ marker, el });
-      });
-    });
-
-    return () => {
-      markersRef.current.forEach(({ marker }) => marker.remove());
-      markersRef.current = [];
-      map.remove();
-      mapRef.current = null;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history, historyLoading]);
-
-  // Update marker styles when activeIndex changes
-  useEffect(() => {
-    markersRef.current.forEach(({ el }, idx) => {
-      const active = idx === activeIndex;
-      el.style.background = active ? '#8f0020' : '#ba0b2f';
-      el.style.transform = active ? 'scale(1.25)' : 'scale(1)';
-    });
-  }, [activeIndex]);
 
   if (!user) {
     return (
@@ -265,7 +145,7 @@ export function ProfilePage() {
             )}
           </article>
 
-          {/* ── Historique Polarsteps ── */}
+          {/* ── Historique globe ── */}
           <section className="lg:col-span-8 flex flex-col gap-4">
 
             {historyLoading ? (
@@ -286,15 +166,22 @@ export function ProfilePage() {
               </div>
             ) : (
               <>
-                {/* Map */}
-                <div className="rounded-3xl overflow-hidden border border-outline-variant/20 shadow-[0_8px_30px_rgba(28,27,27,0.08)]" style={{ height: '380px' }}>
-                  <div ref={mapContainerRef} className="w-full h-full" />
+                {/* Globe Three.js */}
+                <div className="rounded-3xl overflow-hidden shadow-[0_8px_30px_rgba(28,27,27,0.12)]" style={{ height: '400px' }}>
+                  <GlobeHistory
+                    entries={history}
+                    activeIndex={activeIndex}
+                    onSelect={(idx) => {
+                      setActiveIndex(idx);
+                      cardRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }}
+                  />
                 </div>
 
                 {/* Cards header */}
                 <div className="flex items-center justify-between px-1">
                   <p className="text-xs uppercase tracking-widest text-on-surface/40 font-bold">
-                    {history.length} lieu{history.length > 1 ? 'x' : ''} · Clique un marqueur pour explorer
+                    {history.length} lieu{history.length > 1 ? 'x' : ''} · Clique un pin pour explorer
                   </p>
                   {activeIndex !== null && (
                     <button
@@ -313,16 +200,7 @@ export function ProfilePage() {
                     <div
                       key={entry.id}
                       ref={el => { cardRefs.current[idx] = el; }}
-                      onClick={() => {
-                        setActiveIndex(idx);
-                        if (entry.latitude != null && entry.longitude != null && mapRef.current) {
-                          mapRef.current.flyTo({
-                            center: [entry.longitude, entry.latitude],
-                            zoom: 14,
-                            duration: 600,
-                          });
-                        }
-                      }}
+                      onClick={() => setActiveIndex(idx)}
                       className={`snap-start shrink-0 w-48 rounded-2xl overflow-hidden bg-surface-container-lowest border cursor-pointer transition-all duration-200 ${
                         activeIndex === idx
                           ? 'border-primary-container shadow-[0_0_0_2px_#ba0b2f]'
@@ -340,7 +218,6 @@ export function ProfilePage() {
                             </span>
                           </div>
                         )}
-                        {/* Number badge */}
                         <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-primary-container flex items-center justify-center shadow-md">
                           <span className="text-[10px] font-black text-on-primary">{idx + 1}</span>
                         </div>
