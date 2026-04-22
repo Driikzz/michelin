@@ -4,6 +4,7 @@ import type { IHotelRepository } from '../repositories/IHotelRepository';
 import type { IRestaurantRepository } from '../repositories/IRestaurantRepository';
 import type { IRoomRepository } from '../repositories/IRoomRepository';
 import type { IUserRepository } from '../repositories/IUserRepository';
+import type { IGameHistoryRepository } from '../repositories/IGameHistoryRepository';
 import type { EntityType, GameSession } from '../types/game';
 import type { Hotel } from '../types/hotel';
 import type { Restaurant } from '../types/restaurant';
@@ -37,6 +38,7 @@ export class GameService {
     private restaurantService: RestaurantService,
     private hotelService: HotelService,
     private userRepository: IUserRepository,
+    private historyRepository: IGameHistoryRepository,
   ) {}
 
   async startGame(
@@ -180,6 +182,24 @@ export class GameService {
 
     await this.sessionRepository.end(sessionId);
     await this.roomRepository.updateStatus(roomId, 'FINISHED');
+
+    // Persist history for each authenticated player
+    await Promise.allSettled(
+      xpAwards
+        .filter((a) => a.userId !== null)
+        .map((a) =>
+          this.historyRepository.addEntry({
+            userId: a.userId!,
+            roomId,
+            entityId: entity.id,
+            entityType,
+            entityName: entity.name,
+            entityImage: entity.images[0] ?? null,
+            entityCity: entity.city ?? null,
+            xpGained: a.xpGained,
+          }),
+        ),
+    );
 
     return { winnerId, wasRandom, entity, entityType, xpAwards };
   }

@@ -68,6 +68,10 @@ export class RoomRepository implements IRoomRepository {
     return res.rows;
   }
 
+  async removePlayer(playerId: number): Promise<void> {
+    await pool.query('DELETE FROM room_players WHERE id = $1', [playerId]);
+  }
+
   async findPlayerByIdentity(
     roomId: string,
     userId?: string,

@@ -1,8 +1,12 @@
 import type { Request, Response } from 'express';
 import { AuthService } from '../services/authService';
+import type { IUserRepository } from '../repositories/IUserRepository';
 
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userRepository: IUserRepository,
+  ) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -51,7 +55,17 @@ export class AuthController {
     }
   };
 
-  me = (_req: Request, res: Response): void => {
-    res.json({ user: _req.user });
+  me = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    res.json({ user });
   };
 }

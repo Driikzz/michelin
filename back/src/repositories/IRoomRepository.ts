@@ -28,4 +28,5 @@ export interface IRoomRepository {
     userId?: string,
     guestId?: string,
   ): Promise<RoomPlayer | null>;
+  removePlayer(playerId: number): Promise<void>;
 }

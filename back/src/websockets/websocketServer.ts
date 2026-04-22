@@ -6,6 +6,7 @@ import { RestaurantRepository } from '../repositories/restaurantRepository';
 import { HotelRepository } from '../repositories/hotelRepository';
 import { GameSessionRepository } from '../repositories/gameSessionRepository';
 import { UserRepository } from '../repositories/userRepository';
+import { GameHistoryRepository } from '../repositories/gameHistoryRepository';
 import { GameService } from '../services/gameService';
 import { RestaurantService } from '../services/restaurantService';
 import { HotelService } from '../services/hotelService';
@@ -24,7 +25,8 @@ function makeGameService(): GameService {
   const restaurantService = new RestaurantService(restaurantRepo);
   const hotelService = new HotelService(hotelRepo);
   const userRepo = new UserRepository();
-  return new GameService(roomRepo, sessionRepo, restaurantRepo, hotelRepo, restaurantService, hotelService, userRepo);
+  const historyRepo = new GameHistoryRepository();
+  return new GameService(roomRepo, sessionRepo, restaurantRepo, hotelRepo, restaurantService, hotelService, userRepo, historyRepo);
 }
 
 const gameService = makeGameService();
@@ -199,11 +201,26 @@ export function initializeWebSocketServer(server: Server): void {
 
         ws.on('close', () => {
           const ctx = getContext(ws);
-          if (ctx) {
-            gameStateManager.removeSocket(ctx.roomId, ctx.playerId);
-            unregisterConnection(ws);
-            broadcastToRoom(ctx.roomId, 'room:update', {
-              disconnectedPlayerId: ctx.playerId,
+          if (!ctx) return;
+
+          const { roomId: ctxRoomId, playerId: ctxPlayerId } = ctx;
+          gameStateManager.removeSocket(ctxRoomId, ctxPlayerId);
+          unregisterConnection(ws);
+
+          const state = gameStateManager.getRoom(ctxRoomId);
+          if (state?.phase === 'WAITING') {
+            // Kick from DB and notify remaining players
+            void roomRepo.removePlayer(ctxPlayerId).then(async () => {
+              try {
+                const players = await roomRepo.getPlayers(ctxRoomId);
+                broadcastToRoom(ctxRoomId, 'room:update', { phase: 'WAITING', players });
+              } catch {
+                // non-fatal
+              }
+            });
+          } else {
+            broadcastToRoom(ctxRoomId, 'room:update', {
+              disconnectedPlayerId: ctxPlayerId,
             });
           }
         });

@@ -1,5 +1,19 @@
 export type GameMode = 'FAST' | 'CLASSIC' | 'CHAOS';
 export type EntityType = 'RESTAURANT' | 'HOTEL';
+
+export interface GameHistoryEntry {
+  id: number;
+  room_id: string | null;
+  entity_id: string;
+  entity_type: EntityType;
+  entity_name: string;
+  entity_image: string | null;
+  entity_city: string | null;
+  xp_gained: number;
+  played_at: string;
+  latitude: number | null;
+  longitude: number | null;
+}
 export type RoomPhase = 'WAITING' | 'BUILDING' | 'VOTING' | 'FINISHED';
 export type MichelinRank = '1_star' | '2_stars' | '3_stars' | 'bib_gourmand' | 'selected';
 

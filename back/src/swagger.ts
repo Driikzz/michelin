@@ -87,6 +87,23 @@ const playerSchema: OpenAPIV3.SchemaObject = {
   },
 };
 
+const gameHistoryEntrySchema: OpenAPIV3.SchemaObject = {
+  type: 'object',
+  properties: {
+    id: { type: 'integer' },
+    room_id: { type: 'string', format: 'uuid', nullable: true },
+    entity_id: { type: 'string', format: 'uuid' },
+    entity_type: { type: 'string', enum: ['RESTAURANT', 'HOTEL'] },
+    entity_name: { type: 'string' },
+    entity_image: { type: 'string', nullable: true },
+    entity_city: { type: 'string', nullable: true },
+    xp_gained: { type: 'integer' },
+    played_at: { type: 'string', format: 'date-time' },
+    latitude: { type: 'number', nullable: true },
+    longitude: { type: 'number', nullable: true },
+  },
+};
+
 const roomSchema: OpenAPIV3.SchemaObject = {
   type: 'object',
   properties: {
@@ -145,6 +162,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
       User: userSchema,
       Player: playerSchema,
       Room: roomSchema,
+      GameHistoryEntry: gameHistoryEntrySchema,
     },
   },
   paths: {
@@ -254,6 +272,26 @@ export const swaggerDocument: OpenAPIV3.Document = {
         responses: {
           '200': { description: 'User found', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
           '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+        },
+      },
+    },
+
+    // ── Users — history ───────────────────────────────────────────────────────
+    '/users/me/history': {
+      get: {
+        tags: ['Users'],
+        summary: 'Get game history for the authenticated user (last 20 games)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Game history',
+            content: {
+              'application/json': {
+                schema: { type: 'array', items: { $ref: '#/components/schemas/GameHistoryEntry' } },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
         },
       },
     },

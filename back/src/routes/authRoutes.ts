@@ -7,7 +7,7 @@ import { authenticate } from '../middleware/authenticate';
 const router = Router();
 const userRepository = new UserRepository();
 const authService = new AuthService(userRepository);
-const authController = new AuthController(authService);
+const authController = new AuthController(authService, userRepository);
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);

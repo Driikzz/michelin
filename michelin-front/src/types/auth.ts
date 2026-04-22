@@ -2,6 +2,9 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  xp: number;
+  level: number;
+  streak: number;
 }
 
 export interface AuthResponse {
