@@ -29,12 +29,8 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen bg-neutral-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-10 justify-center">
-          <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-white" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>casino</span>
-          </div>
-          <span className="text-xl font-black text-white uppercase tracking-tighter">Roulette</span>
+        <div className="mb-10 flex justify-center">
+          <img src="/michelin.png" alt="Michelin" className="h-14 w-auto object-contain" />
         </div>
 
         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8">

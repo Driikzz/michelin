@@ -7,7 +7,11 @@ export function TopNav() {
 
       {/* Mobile: brand left + profile right */}
       <div className="flex sm:hidden items-center justify-between px-5 py-3">
-        <span className="font-black text-[11px] tracking-[0.2em] uppercase text-on-surface">Michelin</span>
+        <img
+          src="/michelin.png"
+          alt="Michelin"
+          className="h-8 w-auto object-contain"
+        />
         <NavLink
           to="/profile"
           className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface hover:bg-surface-container-highest transition-all"
@@ -19,6 +23,11 @@ export function TopNav() {
 
       {/* Flow progress row — full width on mobile, centered+profile on desktop */}
       <div className="border-t border-outline-variant/10 relative flex items-center sm:px-6 sm:py-3">
+        <img
+          src="/michelin.png"
+          alt="Michelin"
+          className="hidden sm:block h-[5.5rem] w-auto object-contain"
+        />
         <div className="flex-1 sm:flex-none sm:absolute sm:left-1/2 sm:-translate-x-1/2 flex justify-center">
           <FlowProgress />
         </div>
