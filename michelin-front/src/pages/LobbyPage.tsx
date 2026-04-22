@@ -150,12 +150,15 @@ export function LobbyPage() {
 
       <section className="px-6 md:px-10 pt-8 pb-6 md:pt-12 md:pb-8">
         <div className="max-w-6xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-primary-container/10 text-primary-container px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
-            <span className="w-2 h-2 bg-primary-container rounded-full animate-pulse" />
-            {roomCreated
-              ? `${readyCount} joueur${readyCount !== 1 ? 's' : ''} connecté${readyCount !== 1 ? 's' : ''}`
-              : t('lobby.heroTitle')}
-          </div>
+          {roomCreated && 
+            <div className="inline-flex items-center gap-2 bg-primary-container/10 text-primary-container px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
+              <span className="w-2 h-2 bg-primary-container rounded-full animate-pulse" />
+              {roomCreated
+                ? `${readyCount} joueur${readyCount !== 1 ? 's' : ''} connecté${readyCount !== 1 ? 's' : ''}`
+                : t('lobby.heroTitle')}
+            </div>
+          }
+          
 
           <h1 className="text-[2.8rem] sm:text-[3.8rem] md:text-[5rem] lg:text-[6rem] font-black leading-none tracking-[-0.03em] text-on-surface uppercase mb-4">
             {t('lobby.heroTitle')}
