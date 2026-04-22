@@ -27,25 +27,25 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-neutral-100 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-10 flex justify-center">
           <img src="/michelin.png" alt="Michelin" className="h-14 w-auto object-contain" />
         </div>
 
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8">
-          <h1 className="text-2xl font-black text-white mb-1">Créer un compte</h1>
-          <p className="text-sm text-neutral-500 mb-8">La table t'attend.</p>
+        <div className="bg-white border border-neutral-200 rounded-3xl p-8 shadow-sm">
+          <h1 className="text-2xl font-black text-neutral-900 mb-1">Créer un compte</h1>
+          <p className="text-sm text-neutral-600 mb-8">La table t'attend.</p>
 
           <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-5">
             {error && (
-              <div className="bg-red-950/50 border border-red-800 text-red-300 text-sm font-semibold px-4 py-3 rounded-xl">
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="username" className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Pseudo</label>
+              <label htmlFor="username" className="text-xs font-bold text-neutral-600 uppercase tracking-widest">Pseudo</label>
               <input
                 id="username"
                 type="text"
@@ -54,13 +54,13 @@ export function RegisterPage() {
                 autoComplete="username"
                 required
                 maxLength={32}
-                className="bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
+                className="bg-white border border-neutral-300 rounded-xl px-4 py-3 text-neutral-900 text-sm placeholder:text-neutral-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                 placeholder="ton pseudo"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Email</label>
+              <label htmlFor="email" className="text-xs font-bold text-neutral-600 uppercase tracking-widest">Email</label>
               <input
                 id="email"
                 type="email"
@@ -68,13 +68,13 @@ export function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 required
-                className="bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
+                className="bg-white border border-neutral-300 rounded-xl px-4 py-3 text-neutral-900 text-sm placeholder:text-neutral-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                 placeholder="toi@example.com"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Mot de passe</label>
+              <label htmlFor="password" className="text-xs font-bold text-neutral-600 uppercase tracking-widest">Mot de passe</label>
               <input
                 id="password"
                 type="password"
@@ -83,7 +83,7 @@ export function RegisterPage() {
                 autoComplete="new-password"
                 minLength={8}
                 required
-                className="bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-white text-sm placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
+                className="bg-white border border-neutral-300 rounded-xl px-4 py-3 text-neutral-900 text-sm placeholder:text-neutral-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                 placeholder="8 caractères minimum"
               />
             </div>
@@ -105,7 +105,7 @@ export function RegisterPage() {
           </form>
         </div>
 
-        <p className="text-center text-sm text-neutral-600 mt-6">
+        <p className="text-center text-sm text-neutral-700 mt-6">
           Déjà un compte ?{' '}
           <Link to="/login" className="text-red-500 font-bold hover:text-red-400 transition-colors">
             Se connecter
