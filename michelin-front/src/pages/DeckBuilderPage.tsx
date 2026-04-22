@@ -229,7 +229,7 @@ export function DeckBuilderPage() {
         </div>
       </header>
 
-      <main className="flex-grow px-6 md:px-10 pb-8 max-w-7xl mx-auto w-full">
+      <main id="main-content" className="flex-grow px-6 md:px-10 pb-8 max-w-7xl mx-auto w-full">
 
         {/* 2-col on desktop, single col on mobile — map reordered via flex order */}
         <div className="flex flex-col lg:grid lg:grid-cols-[1fr_420px] lg:gap-8 gap-6">
@@ -269,14 +269,16 @@ export function DeckBuilderPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder={t('deck.searchPlaceholder')}
+                aria-label={t('deck.searchPlaceholder')}
                 className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-2xl py-4 pl-12 pr-4 text-base text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:border-primary-container/40 focus:bg-white transition-all shadow-[0_4px_20px_rgba(28,27,27,0.04)]"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
+                  aria-label="Effacer la recherche"
                   className="absolute right-4 text-on-surface/40 hover:text-on-surface transition-colors"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                  <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                 </button>
               )}
             </div>

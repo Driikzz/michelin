@@ -26,14 +26,26 @@ export function CountdownTimer({ initialSeconds, large = false, onEnd }: Countdo
         <span className="text-xs font-bold uppercase tracking-widest text-on-surface/50 mb-1">
           {t('deck.timeToCurate')}
         </span>
-        <div className="text-[4rem] font-bold tracking-tighter text-on-surface leading-none">{mm}:{ss}</div>
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label={`Temps restant : ${mm} minutes et ${ss} secondes`}
+          className="text-[4rem] font-bold tracking-tighter text-on-surface leading-none"
+        >
+          {mm}:{ss}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 text-primary-container">
-      <span className="material-symbols-outlined text-[3rem]" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
+    <div
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={`Temps restant : ${seconds} secondes`}
+      className="flex items-center gap-2 text-primary-container"
+    >
+      <span aria-hidden="true" className="material-symbols-outlined text-[3rem]" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
       <span className="text-[3.5rem] font-bold tracking-[-0.02em] leading-none">{seconds}</span>
     </div>
   );

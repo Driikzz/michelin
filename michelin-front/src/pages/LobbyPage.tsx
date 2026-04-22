@@ -171,7 +171,7 @@ export function LobbyPage() {
         </div>
       </section>
 
-      <main className="flex-grow px-6 md:px-10 pb-8 max-w-6xl mx-auto w-full">
+      <main id="main-content" className="flex-grow px-6 md:px-10 pb-8 max-w-6xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
 
           {/* LEFT — config (hidden once room created) */}
@@ -186,6 +186,8 @@ export function LobbyPage() {
                     <button
                       key={mode.id}
                       onClick={() => setGameMode(mode.id)}
+                      aria-pressed={gameMode === mode.id}
+                      aria-label={`${t(`lobby.modes.${mode.id.toLowerCase()}`)}`}
                       className={`relative py-4 px-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-1.5 ${
                         gameMode === mode.id
                           ? 'bg-primary-container text-on-primary border-primary-container shadow-[0_8px_20px_rgba(186,11,47,0.25)] scale-[1.02]'
@@ -227,6 +229,8 @@ export function LobbyPage() {
                       <button
                         key={preset.id}
                         onClick={() => togglePrice(price)}
+                        aria-pressed={active}
+                        aria-label={`${preset.priceRange} ${preset.label}`}
                         className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 transition-all font-bold text-sm select-none ${
                           active
                             ? 'bg-primary-container text-on-primary border-primary-container shadow-[0_4px_14px_rgba(186,11,47,0.2)] scale-[1.03]'
@@ -260,9 +264,13 @@ export function LobbyPage() {
                     max={20}
                     value={radiusKm}
                     onChange={e => setRadiusKm(Number(e.target.value))}
+                    aria-label={`Distance maximale : ${radiusKm} kilomètres`}
+                    aria-valuemin={1}
+                    aria-valuemax={20}
+                    aria-valuenow={radiusKm}
                     className="w-full accent-primary-container"
                   />
-                  <div className="flex justify-between mt-2 text-xs text-on-surface/40">
+                  <div className="flex justify-between mt-2 text-xs text-on-surface/40" aria-hidden="true">
                     <span>{t('common.walk')}</span><span>{t('common.cab')}</span>
                   </div>
                 </div>
@@ -287,6 +295,7 @@ export function LobbyPage() {
                       <button
                         key={tag.id}
                         onClick={() => toggleTag(tag.id)}
+                        aria-pressed={selectedTags.includes(tag.id)}
                         className={`px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all ${
                           selectedTags.includes(tag.id)
                             ? 'bg-on-surface text-surface shadow-sm scale-[1.02]'
@@ -418,9 +427,13 @@ export function LobbyPage() {
                     max={20}
                     value={radiusKm}
                     onChange={e => setRadiusKm(Number(e.target.value))}
+                    aria-label={`Distance maximale : ${radiusKm} kilomètres`}
+                    aria-valuemin={1}
+                    aria-valuemax={20}
+                    aria-valuenow={radiusKm}
                     className="w-full accent-primary-container"
                   />
-                  <div className="flex justify-between mt-2 text-xs text-on-surface/40">
+                  <div className="flex justify-between mt-2 text-xs text-on-surface/40" aria-hidden="true">
                     <span>{t('common.walk')}</span><span>{t('common.cab')}</span>
                   </div>
                 </div>
@@ -481,8 +494,8 @@ export function LobbyPage() {
                       <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
                     </button>
                   ) : (
-                    <div className="w-full py-5 rounded-2xl border-2 border-dashed border-outline-variant/30 text-on-surface/40 font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2">
-                      <span className="material-symbols-outlined animate-pulse">hourglass_empty</span>
+                    <div role="status" aria-live="polite" className="w-full py-5 rounded-2xl border-2 border-dashed border-outline-variant/30 text-on-surface/40 font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2">
+                      <span aria-hidden="true" className="material-symbols-outlined animate-pulse">hourglass_empty</span>
                       En attente de l'hôte…
                     </div>
                   )}

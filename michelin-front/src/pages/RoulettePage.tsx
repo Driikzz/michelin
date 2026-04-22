@@ -86,8 +86,9 @@ export function RoulettePage() {
       <TopNav />
 
       {/* Timer bar */}
-      <div className="w-full h-1 bg-surface-container-high">
+      <div className="w-full h-1 bg-surface-container-high" role="progressbar" aria-valuemin={0} aria-valuemax={60} aria-valuenow={seconds} aria-label="Temps restant">
         <div
+          aria-hidden="true"
           className={`h-full transition-all duration-1000 rounded-full ${isUrgent ? 'bg-error' : 'bg-primary-container'}`}
           style={{ width: `${progress}%` }}
         />
@@ -108,12 +109,17 @@ export function RoulettePage() {
         </div>
 
         {/* Progress dots */}
-        <div className="flex items-center gap-1.5">
+        <div
+          className="flex items-center gap-1.5"
+          role="group"
+          aria-label={`Progression : ${votedCount} établissement${votedCount !== 1 ? 's' : ''} voté${votedCount !== 1 ? 's' : ''} sur ${entities.length}`}
+        >
           {entities.map((e, i) => {
             const v = voted[e.id];
             return (
               <div
                 key={e.id}
+                aria-hidden="true"
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   v === 'oui' ? 'bg-green-500 w-4' :
                   v === 'non' ? 'bg-primary-container w-4' :
@@ -123,7 +129,7 @@ export function RoulettePage() {
               />
             );
           })}
-          <span className="text-xs text-on-surface/40 font-bold ml-1">{votedCount}/{entities.length}</span>
+          <span className="text-xs text-on-surface/40 font-bold ml-1" aria-hidden="true">{votedCount}/{entities.length}</span>
         </div>
 
         {/* Live like count */}
@@ -205,19 +211,20 @@ export function RoulettePage() {
         </div>
 
         {/* Vote Buttons */}
-        <div className="flex justify-center items-center gap-6 w-full">
+        <div className="flex justify-center items-center gap-6 w-full" role="group" aria-label="Boutons de vote">
           <button
             onClick={() => handleVote('non')}
             disabled={!!animDir}
+            aria-label={`Non — ${current?.name ?? 'cet établissement'}`}
             className="group flex flex-col items-center gap-2"
           >
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-container-lowest border-2 border-outline-variant/30 flex items-center justify-center shadow-[0_8px_30px_rgba(28,27,27,0.08)] hover:border-on-surface/30 hover:bg-surface-container-high transition-all group-hover:scale-110 active:scale-95">
-              <span className="material-symbols-outlined text-on-surface/60 group-hover:text-on-surface transition-colors" style={{ fontSize: '28px' }}>close</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-on-surface/60 group-hover:text-on-surface transition-colors" style={{ fontSize: '28px' }}>close</span>
             </div>
-            <span className="text-xs font-black uppercase tracking-widest text-on-surface/40">{t('roulette.nonShort')}</span>
+            <span aria-hidden="true" className="text-xs font-black uppercase tracking-widest text-on-surface/40">{t('roulette.nonShort')}</span>
           </button>
 
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center" aria-hidden="true">
             <span className="text-2xl font-black text-on-surface">{currentIndex + 1}</span>
             <span className="text-xs text-on-surface/30 font-bold">/ {entities.length}</span>
           </div>
@@ -225,12 +232,13 @@ export function RoulettePage() {
           <button
             onClick={() => handleVote('oui')}
             disabled={!!animDir}
+            aria-label={`Oui — ${current?.name ?? 'cet établissement'}`}
             className="group flex flex-col items-center gap-2"
           >
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-primary-container flex items-center justify-center shadow-[0_12px_30px_rgba(186,11,47,0.3)] hover:bg-primary transition-all group-hover:scale-110 active:scale-95">
-              <span className="material-symbols-outlined text-on-primary" style={{ fontSize: '32px', fontVariationSettings: "'FILL' 1" }}>favorite</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-on-primary" style={{ fontSize: '32px', fontVariationSettings: "'FILL' 1" }}>favorite</span>
             </div>
-            <span className="text-xs font-black uppercase tracking-widest text-primary-container">{t('roulette.ouiShort')}</span>
+            <span aria-hidden="true" className="text-xs font-black uppercase tracking-widest text-primary-container">{t('roulette.ouiShort')}</span>
           </button>
         </div>
       </main>

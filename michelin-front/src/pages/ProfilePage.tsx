@@ -255,7 +255,7 @@ export function ProfilePage() {
     <div className="min-h-screen bg-surface text-on-surface">
       <TopNav />
 
-      <main className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10">
         <button
           onClick={() => navigate('/lobby')}
           className="flex items-center gap-2 text-sm font-bold text-on-surface/50 hover:text-on-surface transition-colors mb-6"
@@ -395,6 +395,10 @@ export function ProfilePage() {
                     <div
                       key={entry.id}
                       ref={el => { cardRefs.current[idx] = el; }}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={activeIndex === idx}
+                      aria-label={`${entry.entity_name}${entry.entity_city ? `, ${entry.entity_city}` : ''}`}
                       onClick={() => {
                         setActiveIndex(idx);
                         if (entry.latitude != null && entry.longitude != null && mapRef.current) {
@@ -403,6 +407,15 @@ export function ProfilePage() {
                             zoom: 14,
                             duration: 600,
                           });
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setActiveIndex(idx);
+                          if (entry.latitude != null && entry.longitude != null && mapRef.current) {
+                            mapRef.current.flyTo({ center: [entry.longitude, entry.latitude], zoom: 14, duration: 600 });
+                          }
                         }
                       }}
                       className={`snap-start shrink-0 w-48 rounded-2xl overflow-hidden bg-surface-container-lowest border cursor-pointer transition-all duration-200 ${

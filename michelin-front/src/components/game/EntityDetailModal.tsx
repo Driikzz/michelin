@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { entityImage, michelinStarCount, priceLabel } from '../../contexts/GameContext';
 import type { Entity, HoursSlot } from '../../types/api';
 
@@ -45,14 +46,26 @@ export function EntityDetailModal({ entity, inDeck, onAdd, onClose }: Props) {
   const sortedDays = entity.days_open
     ? DAY_ORDER.filter((d) => entity.days_open!.includes(d))
     : null;
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeBtnRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="presentation"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-entity-title"
         className="relative bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -60,10 +73,12 @@ export function EntityDetailModal({ entity, inDeck, onAdd, onClose }: Props) {
         <div className="relative h-52 overflow-hidden rounded-t-3xl sm:rounded-t-3xl">
           <img src={image} alt={entity.name} className="w-full h-full object-cover" />
           <button
+            ref={closeBtnRef}
             onClick={onClose}
+            aria-label="Fermer"
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: '18px' }}>close</span>
           </button>
           <div className="absolute bottom-4 left-4 flex gap-1 items-center">
             {Array.from({ length: stars }).map((_, i) => (
@@ -84,7 +99,7 @@ export function EntityDetailModal({ entity, inDeck, onAdd, onClose }: Props) {
         {/* Content */}
         <div className="p-6 flex flex-col gap-4">
           <div>
-            <h2 className="text-xl font-black text-on-surface leading-tight">{entity.name}</h2>
+            <h2 id="modal-entity-title" className="text-xl font-black text-on-surface leading-tight">{entity.name}</h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               {priceLabel(entity.price_category) && (
                 <span className="text-sm font-bold text-primary-container">{priceLabel(entity.price_category)}</span>

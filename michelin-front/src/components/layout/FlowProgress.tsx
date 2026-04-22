@@ -28,6 +28,8 @@ export function FlowProgress() {
             <button
               onClick={() => accessible && navigate(step.path)}
               disabled={!accessible}
+              aria-current={active ? 'step' : undefined}
+              aria-label={`${t(step.key)}${done ? ' (terminé)' : active ? ' (en cours)' : ''}`}
               className={`flex flex-col items-center gap-1 transition-all ${accessible ? 'cursor-pointer' : 'cursor-default'}`}
             >
               <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${

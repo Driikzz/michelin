@@ -132,7 +132,7 @@ export function VerdictPage() {
     <div className="min-h-screen bg-white flex flex-col">
       <TopNav />
 
-      <main className="flex-grow w-full max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-10 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
+      <main id="main-content" className="flex-grow w-full max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-10 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
 
         {/* HERO TILE */}
         <div className="lg:col-span-8 relative rounded-3xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.14)] flex flex-col group">

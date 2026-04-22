@@ -3,7 +3,8 @@ import { FlowProgress } from './FlowProgress';
 
 export function TopNav() {
   return (
-    <nav className="flex flex-col w-full sticky top-0 z-50 bg-surface-container-low/95 backdrop-blur-md border-b border-outline-variant/10">
+    <nav className="flex flex-col w-full sticky top-0 z-50 bg-surface-container-low/95 backdrop-blur-md border-b border-outline-variant/10" aria-label="Navigation principale">
+      <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
       {/* Mobile: brand left + profile right */}
       <div className="flex sm:hidden items-center justify-between px-5 py-3">

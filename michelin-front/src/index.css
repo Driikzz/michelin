@@ -101,3 +101,29 @@ body {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Keyboard focus ring — visible only with keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #ba0b2f;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip-to-main-content link for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.5rem 1.25rem;
+  background: #ba0b2f;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.875rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: 0;
+}

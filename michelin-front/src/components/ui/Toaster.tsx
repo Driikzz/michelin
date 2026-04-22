@@ -18,13 +18,19 @@ export function Toaster() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 items-center pointer-events-none">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 items-center pointer-events-none"
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
           className={`flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-sm shadow-xl pointer-events-auto max-w-sm w-full ${STYLE_MAP[toast.type]}`}
         >
           <span
+            aria-hidden="true"
             className="material-symbols-outlined shrink-0"
             style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}
           >
@@ -33,9 +39,10 @@ export function Toaster() {
           <p className="text-sm font-semibold flex-1">{toast.message}</p>
           <button
             onClick={() => removeToast(toast.id)}
+            aria-label="Fermer la notification"
             className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
           </button>
         </div>
       ))}

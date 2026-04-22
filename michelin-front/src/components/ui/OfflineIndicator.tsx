@@ -26,13 +26,16 @@ export function OfflineIndicator() {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       className={`fixed top-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-lg transition-all ${
         isOnline
           ? 'bg-green-500 text-white'
           : 'bg-[#1c1b1b] text-white'
       }`}
     >
-      <span className="material-symbols-outlined text-[16px]">
+      <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
         {isOnline ? 'wifi' : 'wifi_off'}
       </span>
       {isOnline ? 'Connexion rétablie' : 'Hors ligne'}
