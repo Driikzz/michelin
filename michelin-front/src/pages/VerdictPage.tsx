@@ -221,25 +221,45 @@ export function VerdictPage() {
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark_add</span>
             <span>{t('verdict.reserveNow')}</span>
           </button>
-          <button
-            onClick={handleNewGame}
-            className="w-full bg-surface-container-low text-on-surface py-3 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-surface-container-high transition-all active:scale-[0.98] flex justify-center items-center gap-2"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>replay</span>
-            <span>{t('verdict.newGame')}</span>
-          </button>
+          {user ? (
+            <button
+              onClick={handleNewGame}
+              className="w-full bg-surface-container-low text-on-surface py-3 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-surface-container-high transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>replay</span>
+              <span>{t('verdict.newGame')}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/register')}
+              className="w-full bg-on-surface text-surface py-3 rounded-2xl font-bold text-sm uppercase tracking-widest hover:opacity-80 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+              <span>Créer un compte</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Desktop new game */}
+      {/* Desktop new game / register */}
       <div className="hidden lg:flex justify-center pb-10">
-        <button
-          onClick={handleNewGame}
-          className="text-sm font-bold text-on-surface/40 hover:text-primary-container uppercase tracking-widest flex items-center gap-2 transition-colors"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>replay</span>
-          {t('verdict.newGame')}
-        </button>
+        {user ? (
+          <button
+            onClick={handleNewGame}
+            className="text-sm font-bold text-on-surface/40 hover:text-primary-container uppercase tracking-widest flex items-center gap-2 transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>replay</span>
+            {t('verdict.newGame')}
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/register')}
+            className="text-sm font-bold text-primary-container hover:text-primary uppercase tracking-widest flex items-center gap-2 transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>person_add</span>
+            Créer un compte pour sauvegarder ma progression
+          </button>
+        )}
       </div>
 
       <div className="h-36 lg:hidden" />
