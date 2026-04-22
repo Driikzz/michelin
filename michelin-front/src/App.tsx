@@ -3,6 +3,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { GameProvider } from './contexts/GameContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Toaster } from './components/ui/Toaster';
+import { InstallBanner } from './components/ui/InstallBanner';
+import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -20,6 +22,8 @@ function App() {
         <ToastProvider>
         <GameProvider>
           <Toaster />
+          <InstallBanner />
+          <OfflineIndicator />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
