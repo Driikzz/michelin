@@ -28,13 +28,17 @@ export class HotelService {
     tagIds: number[];
     count: number;
   }): Promise<Hotel[]> {
+    const priceFilter = params.priceFilters.length > 0 && params.priceFilters.length < 4
+      ? params.priceFilters
+      : undefined;
+
     const results = await this.hotelRepository.search({
       lat: params.latitude,
       lng: params.longitude,
       radius: params.radiusKm,
-      ...(params.priceFilters.length > 0 && { prices: params.priceFilters }),
+      ...(priceFilter && { prices: priceFilter }),
       ...(params.tagIds.length > 0 && { tags: params.tagIds }),
-      limit: 100,
+      limit: 200,
     });
 
     if (results.length === 0) {

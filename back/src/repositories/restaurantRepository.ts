@@ -75,7 +75,10 @@ export class RestaurantRepository implements IRestaurantRepository {
     const res = await pool.query<RestaurantRow>(
       `SELECT id, name, description, michelin_rank, price_category,
               phone, website_url, address, postal_code, city, country,
-              latitude, longitude, created_at
+              latitude, longitude, created_at,
+              slug, region, city_slug, email, michelin_url,
+              green_star, chef, currency, guide_year,
+              days_open, hours_of_operation, facilities
        FROM restaurants
        WHERE id = ANY($1)`,
       [ids],

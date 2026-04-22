@@ -76,7 +76,10 @@ export class HotelRepository implements IHotelRepository {
     const res = await pool.query<HotelRow>(
       `SELECT id, name, description, michelin_rank, price_category,
               phone, website_url, address, postal_code, city, country,
-              latitude, longitude, created_at
+              latitude, longitude, created_at,
+              slug, region, city_slug, email, michelin_url,
+              keys_level, lodging_type, rooms_count,
+              amenities, is_plus, neighborhood
        FROM hotels
        WHERE id = ANY($1)`,
       [ids],

@@ -3,93 +3,145 @@ import { join } from 'path';
 import { Pool } from 'pg';
 import { runMigrations } from './migrations/migrationRunner';
 
-// ─── Types matching the JSON shape ──────────────────────────────────────────
-
-interface RawImage {
-  url: string;
-  order: number;
-}
+// ─── Types matching the new worldwide JSON format ────────────────────────────
 
 interface RawCuisine {
   label: string;
   slug: string;
 }
 
-interface RawEntity {
-  identifier: string;
-  name: string;
-  michelin_award: string | null;
-  price_category: { code: string } | null;
-  cuisines: RawCuisine[];
-  images: RawImage[] | null;
-  _geoloc: { lat: number; lng: number } | null;
-  city: { name: string } | null;
-  country: { name: string } | null;
-  _snippetResult?: { main_desc?: { value?: string } };
+interface HoursSlot {
+  closed: boolean;
+  closes: string;
+  opens: string;
 }
 
-interface JsonFile {
-  results: Array<{ hits: RawEntity[] }>;
+interface RawRestaurant {
+  externalId: string;
+  name: string;
+  slug: string;
+  country: { name: string; code: string };
+  region: { name: string };
+  city: string;
+  citySlug: string;
+  postalCode: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  phone: string | null;
+  website: string | null;
+  email: string | null;
+  coverImageUrl: string | null;
+  description: string | null;
+  url: string | null;
+  restaurant: {
+    distinction: string | null;
+    greenStar: boolean;
+    cuisines: RawCuisine[];
+    chef: string | null;
+    currency: string | null;
+    guideYear: number | null;
+    facilities: string[];
+    daysOpen: string[];
+    hoursOfOperation: Record<string, HoursSlot[]> | null;
+  };
+}
+
+interface RawHotel {
+  externalId: string;
+  name: string;
+  slug: string;
+  country: { name: string; code: string };
+  region: { name: string };
+  city: string;
+  citySlug: string;
+  postalCode: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  phone: string | null;
+  website: string | null;
+  email: string | null;
+  coverImageUrl: string | null;
+  description: string | null;
+  url: string | null;
+  lodging: {
+    keysLevel: number | null;
+    lodgingType: string | null;
+    roomsCount: number | null;
+    amenities: { id: number; amenity: string }[];
+    isPlus: boolean;
+    neighborhood: string | null;
+  };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function derivePriceCategory(distinction: string | null, externalId: string): number {
+  switch (distinction) {
+    case 'three_stars': return 4;
+    case 'two_stars':   return 3;
+    case 'one_star':    return 2;
+    case 'bib_gourmand': return 1;
+    default: {
+      // Deterministic spread 1–4 based on external ID so reruns stay consistent
+      let hash = 0;
+      for (let i = 0; i < externalId.length; i++) hash = (hash * 31 + externalId.charCodeAt(i)) >>> 0;
+      return (hash % 4) + 1;
+    }
+  }
 }
 
 // ─── Mappings ────────────────────────────────────────────────────────────────
 
-const MICHELIN_RANK_MAP: Record<string, string> = {
-  ONE_STAR: '1_star',
-  TWO_STARS: '2_stars',
-  THREE_STARS: '3_stars',
-  BIB_GOURMAND: 'bib_gourmand',
-  selected: 'selected',
-};
-
-const PRICE_MAP: Record<string, number> = {
-  CAT_P01: 1,
-  CAT_P02: 2,
-  CAT_P03: 3,
-  CAT_P04: 4,
+const DISTINCTION_MAP: Record<string, string> = {
+  three_stars:  '3_stars',
+  two_stars:    '2_stars',
+  one_star:     '1_star',
+  bib_gourmand: 'bib_gourmand',
+  selected:     'selected',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function loadFiles(dataDir: string, fileNames: string[]): RawEntity[] {
-  const allHits: RawEntity[] = [];
-  for (const file of fileNames) {
-    const filePath = join(dataDir, file);
-    if (!existsSync(filePath)) {
-      console.log(`  Skipping ${file} (not found)`);
-      continue;
-    }
-    const raw = readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as JsonFile;
-    for (const result of parsed.results) {
-      allHits.push(...result.hits);
-    }
+function loadJsonFile<T>(filePath: string): T[] {
+  if (!existsSync(filePath)) {
+    console.log(`  Skipping ${filePath} (not found)`);
+    return [];
   }
-  return allHits;
+  const raw = readFileSync(filePath, 'utf8');
+  return JSON.parse(raw) as T[];
 }
 
-function dedup(hits: RawEntity[]): RawEntity[] {
+function dedupById<T extends { externalId: string }>(items: T[]): T[] {
   const seen = new Set<string>();
-  return hits.filter((r) => {
-    if (seen.has(r.identifier)) return false;
-    seen.add(r.identifier);
+  return items.filter((item) => {
+    if (seen.has(item.externalId)) return false;
+    seen.add(item.externalId);
     return true;
   });
 }
 
-async function upsertTags(
-  pool: Pool,
-  entities: RawEntity[],
-): Promise<Map<string, number>> {
-  const allCuisines = new Map<string, string>();
-  for (const r of entities) {
-    for (const c of r.cuisines ?? []) {
-      allCuisines.set(c.label, c.slug);
-    }
-  }
+function prioritizeAndCap<T extends { country: { code: string }; citySlug: string }>(
+  items: T[],
+  cap: number,
+): T[] {
+  const lyon    = items.filter((e) => e.citySlug === 'lyon');
+  const frOther = items.filter((e) => e.country.code === 'FR' && e.citySlug !== 'lyon');
+  const rest    = items.filter((e) => e.country.code !== 'FR');
+  return [...lyon, ...frOther, ...rest].slice(0, cap);
+}
 
+async function upsertRestaurantTags(
+  pool: Pool,
+  restaurants: RawRestaurant[],
+): Promise<Map<string, number>> {
+  const labels = new Set<string>();
+  for (const r of restaurants) {
+    for (const c of r.restaurant.cuisines ?? []) labels.add(c.label);
+  }
   const tagIdMap = new Map<string, number>();
-  for (const [label] of allCuisines) {
+  for (const label of labels) {
     const res = await pool.query<{ id: number }>(
       `INSERT INTO tags (name) VALUES ($1)
        ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
@@ -102,63 +154,198 @@ async function upsertTags(
   return tagIdMap;
 }
 
-async function seedEntities(
+async function upsertHotelTags(
   pool: Pool,
-  entities: RawEntity[],
+  hotels: RawHotel[],
+): Promise<Map<string, number>> {
+  const labels = new Set<string>();
+  for (const h of hotels) {
+    for (const a of h.lodging.amenities ?? []) labels.add(a.amenity);
+  }
+  const tagIdMap = new Map<string, number>();
+  for (const label of labels) {
+    const res = await pool.query<{ id: number }>(
+      `INSERT INTO tags (name) VALUES ($1)
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [label],
+    );
+    const row = res.rows[0];
+    if (row) tagIdMap.set(label, row.id);
+  }
+  return tagIdMap;
+}
+
+async function seedRestaurants(
+  pool: Pool,
+  restaurants: RawRestaurant[],
   tagIdMap: Map<string, number>,
-  table: 'restaurants' | 'hotels',
-  imageTable: 'restaurant_images' | 'hotel_images',
-  tagTable: 'restaurant_tags' | 'hotel_tags',
-  fkCol: 'restaurant_id' | 'hotel_id',
 ): Promise<void> {
   let inserted = 0;
   let skipped = 0;
 
-  for (const r of entities) {
-    const michelinRank = r.michelin_award ? (MICHELIN_RANK_MAP[r.michelin_award] ?? null) : null;
-    const priceCategory = r.price_category ? (PRICE_MAP[r.price_category.code] ?? null) : null;
-    const description = r._snippetResult?.main_desc?.value ?? null;
-    const lat = r._geoloc?.lat ?? null;
-    const lng = r._geoloc?.lng ?? null;
-    const city = r.city?.name ?? null;
-    const country = r.country?.name ?? null;
+  for (const r of restaurants) {
+    const michelinRank = r.restaurant.distinction
+      ? (DISTINCTION_MAP[r.restaurant.distinction] ?? null)
+      : null;
+    const priceCategory = derivePriceCategory(r.restaurant.distinction ?? null, r.externalId);
 
     const res = await pool.query<{ id: string }>(
-      `INSERT INTO ${table}
+      `INSERT INTO restaurants
          (name, description, michelin_rank, price_category,
-          latitude, longitude, city, country, external_id)
-       VALUES ($1, $2, $3::michelin_rank, $4, $5, $6, $7, $8, $9)
+          phone, website_url, address, postal_code, city, country,
+          latitude, longitude, external_id,
+          slug, region, city_slug, email, michelin_url,
+          green_star, chef, currency, guide_year,
+          days_open, hours_of_operation, facilities)
+       VALUES
+         ($1,  $2,  $3::michelin_rank, $4,
+          $5,  $6,  $7,  $8,  $9,  $10,
+          $11, $12, $13,
+          $14, $15, $16, $17, $18,
+          $19, $20, $21, $22,
+          $23, $24, $25)
        ON CONFLICT (external_id) DO NOTHING
        RETURNING id`,
-      [r.name, description, michelinRank, priceCategory, lat, lng, city, country, r.identifier],
+      [
+        r.name,
+        r.description ? r.description.replace(/<[^>]*>/g, '') : null,
+        michelinRank,
+        priceCategory,
+        r.phone,
+        r.website,
+        r.address || null,
+        r.postalCode || null,
+        r.city || null,
+        r.country.name,
+        r.lat,
+        r.lng,
+        r.externalId,
+        r.slug || null,
+        r.region?.name ?? null,
+        r.citySlug || null,
+        r.email,
+        r.url,
+        r.restaurant.greenStar ?? false,
+        r.restaurant.chef,
+        r.restaurant.currency,
+        r.restaurant.guideYear,
+        r.restaurant.daysOpen?.length ? r.restaurant.daysOpen : null,
+        r.restaurant.hoursOfOperation ? JSON.stringify(r.restaurant.hoursOfOperation) : null,
+        r.restaurant.facilities?.length ? r.restaurant.facilities : null,
+      ],
     );
 
     const entityId = res.rows[0]?.id;
     if (!entityId) { skipped++; continue; }
     inserted++;
 
-    const sortedImages = [...(r.images ?? [])].sort((a, b) => a.order - b.order);
-    for (const img of sortedImages) {
+    if (r.coverImageUrl) {
       await pool.query(
-        `INSERT INTO ${imageTable} (${fkCol}, image_url) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [entityId, img.url],
+        `INSERT INTO restaurant_images (restaurant_id, image_url) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [entityId, r.coverImageUrl],
       );
     }
 
-    for (const cuisine of r.cuisines ?? []) {
+    for (const cuisine of r.restaurant.cuisines ?? []) {
       const tagId = tagIdMap.get(cuisine.label);
       if (tagId === undefined) continue;
       await pool.query(
-        `INSERT INTO ${tagTable} (${fkCol}, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        `INSERT INTO restaurant_tags (restaurant_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
         [entityId, tagId],
       );
     }
   }
 
-  console.log(`  ${table}: inserted ${inserted}, skipped ${skipped}`);
+  console.log(`  restaurants: inserted ${inserted}, skipped ${skipped}`);
+}
+
+async function seedHotels(
+  pool: Pool,
+  hotels: RawHotel[],
+  tagIdMap: Map<string, number>,
+): Promise<void> {
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const h of hotels) {
+    const hotelPriceCategory = derivePriceCategory(
+      h.lodging.keysLevel ? `${h.lodging.keysLevel}_key` : null,
+      h.externalId,
+    );
+
+    const res = await pool.query<{ id: string }>(
+      `INSERT INTO hotels
+         (name, description, michelin_rank, price_category,
+          phone, website_url, address, postal_code, city, country,
+          latitude, longitude, external_id,
+          slug, region, city_slug, email, michelin_url,
+          keys_level, lodging_type, rooms_count,
+          amenities, is_plus, neighborhood)
+       VALUES
+         ($1,  $2,  $3::michelin_rank, $4,
+          $5,  $6,  $7,  $8,  $9,  $10,
+          $11, $12, $13,
+          $14, $15, $16, $17, $18,
+          $19, $20, $21,
+          $22, $23, $24)
+       ON CONFLICT (external_id) DO NOTHING
+       RETURNING id`,
+      [
+        h.name,
+        h.description ? h.description.replace(/<[^>]*>/g, '') : null,
+        null,
+        hotelPriceCategory,
+        h.phone,
+        h.website,
+        h.address || null,
+        h.postalCode || null,
+        h.city || null,
+        h.country.name,
+        h.lat,
+        h.lng,
+        h.externalId,
+        h.slug || null,
+        h.region?.name ?? null,
+        h.citySlug || null,
+        h.email,
+        h.url,
+        h.lodging.keysLevel,
+        h.lodging.lodgingType,
+        h.lodging.roomsCount,
+        h.lodging.amenities?.length ? JSON.stringify(h.lodging.amenities) : null,
+        h.lodging.isPlus ?? false,
+        h.lodging.neighborhood,
+      ],
+    );
+
+    const entityId = res.rows[0]?.id;
+    if (!entityId) { skipped++; continue; }
+    inserted++;
+
+    if (h.coverImageUrl) {
+      await pool.query(
+        `INSERT INTO hotel_images (hotel_id, image_url) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [entityId, h.coverImageUrl],
+      );
+    }
+
+    for (const amenity of h.lodging.amenities ?? []) {
+      const tagId = tagIdMap.get(amenity.amenity);
+      if (tagId === undefined) continue;
+      await pool.query(
+        `INSERT INTO hotel_tags (hotel_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [entityId, tagId],
+      );
+    }
+  }
+
+  console.log(`  hotels: inserted ${inserted}, skipped ${skipped}`);
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
+
+const SEED_CAP = 5_000;
 
 async function seed(): Promise<void> {
   const pool = new Pool({ connectionString: process.env['DATABASE_URL'] });
@@ -171,27 +358,27 @@ async function seed(): Promise<void> {
 
     // ── Restaurants ───────────────────────────────────────────────────────
     console.log('\nSeeding restaurants...');
-    const restaurantFiles = ['restaurant1.json', 'restaurant2.json', 'restaurant3.json'];
-    const restaurantHits = dedup(loadFiles(dataDir, restaurantFiles));
-    console.log(`Found ${restaurantHits.length} unique restaurants`);
-    const restaurantTagMap = await upsertTags(pool, restaurantHits);
-    console.log(`Upserted ${restaurantTagMap.size} tags`);
-    await seedEntities(pool, restaurantHits, restaurantTagMap,
-      'restaurants', 'restaurant_images', 'restaurant_tags', 'restaurant_id');
+    const allRestaurants = dedupById(
+      loadJsonFile<RawRestaurant>(join(dataDir, 'restaurants-worldwide.json')),
+    );
+    console.log(`Loaded ${allRestaurants.length} unique restaurants`);
+    const restaurants = prioritizeAndCap(allRestaurants, SEED_CAP);
+    console.log(`Seeding ${restaurants.length} (Lyon-first, France-priority, cap ${SEED_CAP})`);
+    const restaurantTagMap = await upsertRestaurantTags(pool, restaurants);
+    console.log(`Upserted ${restaurantTagMap.size} restaurant tags`);
+    await seedRestaurants(pool, restaurants, restaurantTagMap);
 
     // ── Hotels ────────────────────────────────────────────────────────────
     console.log('\nSeeding hotels...');
-    const hotelFiles = ['hotel1.json', 'hotel2.json', 'hotel3.json'];
-    const hotelHits = dedup(loadFiles(dataDir, hotelFiles));
-    console.log(`Found ${hotelHits.length} unique hotels`);
-    if (hotelHits.length > 0) {
-      const hotelTagMap = await upsertTags(pool, hotelHits);
-      console.log(`Upserted ${hotelTagMap.size} tags`);
-      await seedEntities(pool, hotelHits, hotelTagMap,
-        'hotels', 'hotel_images', 'hotel_tags', 'hotel_id');
-    } else {
-      console.log('  No hotel files found, skipping.');
-    }
+    const allHotels = dedupById(
+      loadJsonFile<RawHotel>(join(dataDir, 'hotels-worldwide.json')),
+    );
+    console.log(`Loaded ${allHotels.length} unique hotels`);
+    const hotels = prioritizeAndCap(allHotels, SEED_CAP);
+    console.log(`Seeding ${hotels.length} (Lyon-first, France-priority, cap ${SEED_CAP})`);
+    const hotelTagMap = await upsertHotelTags(pool, hotels);
+    console.log(`Upserted ${hotelTagMap.size} hotel tags`);
+    await seedHotels(pool, hotels, hotelTagMap);
 
     console.log('\nSeeding complete.');
   } finally {

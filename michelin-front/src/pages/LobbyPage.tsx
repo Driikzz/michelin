@@ -54,13 +54,15 @@ export function LobbyPage() {
     if (countTimerRef.current) clearTimeout(countTimerRef.current);
     setCountLoading(true);
     countTimerRef.current = setTimeout(() => {
+      const partialPrices = selectedPrices.length > 0 && selectedPrices.length < 4 ? selectedPrices : [];
       entityService
         .searchEntities('RESTAURANT', {
           lat: coords.lat,
           lng: coords.lng,
           radius: radiusKm,
-          ...(selectedPrices.length > 0 && { prices: selectedPrices }),
+          ...(partialPrices.length > 0 && { prices: partialPrices }),
           ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
+          limit: 500,
         })
         .then((results) => setEntityCount(results.length))
         .catch(() => setEntityCount(null))

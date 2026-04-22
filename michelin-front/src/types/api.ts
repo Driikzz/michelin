@@ -22,6 +22,12 @@ export interface Tag {
   name: string;
 }
 
+export interface HoursSlot {
+  closed: boolean;
+  closes: string;
+  opens: string;
+}
+
 export interface Entity {
   id: string;
   name: string;
@@ -34,6 +40,16 @@ export interface Entity {
   longitude: number | null;
   images: string[];
   tags: Tag[];
+  // new fields
+  website_url: string | null;
+  green_star?: boolean;
+  chef?: string | null;
+  days_open?: string[] | null;
+  hours_of_operation?: Record<string, HoursSlot[]> | null;
+  facilities?: string[] | null;
+  // hotel-specific
+  keys_level?: number | null;
+  neighborhood?: string | null;
 }
 
 export interface Player {

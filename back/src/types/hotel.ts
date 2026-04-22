@@ -17,6 +17,18 @@ export interface Hotel {
   latitude: number | null;
   longitude: number | null;
   created_at: Date;
+  // new fields
+  slug: string | null;
+  region: string | null;
+  city_slug: string | null;
+  email: string | null;
+  michelin_url: string | null;
+  keys_level: number | null;
+  lodging_type: string | null;
+  rooms_count: number | null;
+  amenities: { id: number; amenity: string }[] | null;
+  is_plus: boolean;
+  neighborhood: string | null;
   images: string[];
   tags: Tag[];
 }

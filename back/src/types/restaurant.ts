@@ -5,6 +5,12 @@ export interface Tag {
   name: string;
 }
 
+export interface HoursSlot {
+  closed: boolean;
+  closes: string;
+  opens: string;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -20,6 +26,19 @@ export interface Restaurant {
   latitude: number | null;
   longitude: number | null;
   created_at: Date;
+  // new fields
+  slug: string | null;
+  region: string | null;
+  city_slug: string | null;
+  email: string | null;
+  michelin_url: string | null;
+  green_star: boolean;
+  chef: string | null;
+  currency: string | null;
+  guide_year: number | null;
+  days_open: string[] | null;
+  hours_of_operation: Record<string, HoursSlot[]> | null;
+  facilities: string[] | null;
   images: string[];
   tags: Tag[];
 }
