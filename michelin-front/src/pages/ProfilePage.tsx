@@ -95,20 +95,20 @@ function getBadge(level: number): Badge {
   };
 }
 
-function makeMarkerEl(index: number, active: boolean): HTMLDivElement {
+function makeMarkerEl(index: number): HTMLDivElement {
   const el = document.createElement('div');
   el.style.cssText = `
     width: 28px; height: 28px; border-radius: 50%;
-    background: ${active ? '#8f0020' : '#ba0b2f'};
+    background-color: #ba0b2f;
     border: 2.5px solid #ffffff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 11px; font-weight: 900;
-    cursor: pointer; transition: transform 0.15s;
-    font-family: system-ui, sans-serif;
-    transform: ${active ? 'scale(1.25)' : 'scale(1)'};
+    cursor: pointer; transition: background-color 0.15s, box-shadow 0.15s, border-color 0.15s;
   `;
-  el.textContent = String(index + 1);
+  const span = document.createElement('span');
+  span.style.cssText = 'color: #fff; font-size: 11px; font-weight: 900; font-family: system-ui, sans-serif; line-height: 1; pointer-events: none;';
+  span.textContent = String(index + 1);
+  el.appendChild(span);
   return el;
 }
 
@@ -122,7 +122,7 @@ export function ProfilePage() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maptilersdk.Map | null>(null);
-  const markersRef = useRef<{ marker: maptilersdk.Marker; el: HTMLDivElement }[]>([]);
+  const markersRef = useRef<{ marker: maptilersdk.Marker; el: HTMLDivElement; entryIndex: number }[]>([]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const historyRef = useRef<GameHistoryEntry[]>([]);
 
@@ -198,17 +198,18 @@ export function ProfilePage() {
       entries.forEach((entry, idx) => {
         if (entry.latitude == null || entry.longitude == null) return;
 
-        const el = makeMarkerEl(idx, false);
+        const el = makeMarkerEl(idx);
         const marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
           .setLngLat([entry.longitude, entry.latitude])
           .addTo(map);
 
-        el.addEventListener('click', () => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
           setActiveIndex(idx);
           cardRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         });
 
-        markersRef.current.push({ marker, el });
+        markersRef.current.push({ marker, el, entryIndex: idx });
       });
     });
 
@@ -223,10 +224,13 @@ export function ProfilePage() {
 
   // Update marker styles when activeIndex changes
   useEffect(() => {
-    markersRef.current.forEach(({ el }, idx) => {
-      const active = idx === activeIndex;
-      el.style.background = active ? '#8f0020' : '#ba0b2f';
-      el.style.transform = active ? 'scale(1.25)' : 'scale(1)';
+    markersRef.current.forEach(({ el, entryIndex }) => {
+      const active = entryIndex === activeIndex;
+      el.style.backgroundColor = active ? '#8f0020' : '#ba0b2f';
+      el.style.boxShadow = active
+        ? '0 0 0 3px rgba(186,11,47,0.5), 0 2px 10px rgba(0,0,0,0.45)'
+        : '0 2px 8px rgba(0,0,0,0.35)';
+      el.style.borderColor = active ? '#ffcdd2' : '#ffffff';
     });
   }, [activeIndex]);
 
