@@ -124,7 +124,11 @@ export class RestaurantRepository implements IRestaurantRepository {
 
   async getRandomTagIds(count: number): Promise<number[]> {
     const res = await pool.query<{ id: number }>(
-      'SELECT id FROM tags ORDER BY random() LIMIT $1',
+      `SELECT id FROM (
+         SELECT DISTINCT t.id FROM tags t
+         INNER JOIN restaurant_tags rt ON rt.tag_id = t.id
+       ) sub
+       ORDER BY random() LIMIT $1`,
       [count],
     );
     return res.rows.map((r) => r.id);
