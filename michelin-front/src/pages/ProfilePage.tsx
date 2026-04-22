@@ -35,6 +35,66 @@ function relativeDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
+interface Badge {
+  name: string;
+  icon: string;
+  bg: string;
+  text: string;
+  ring: string;
+  next: string | null; // next badge name, for display
+}
+
+function getBadge(level: number): Badge {
+  if (level >= 25) return {
+    name: 'Chef Inspecteur',    icon: 'workspace_premium',
+    bg: 'bg-gradient-to-br from-[#ffd06b] to-[#a67c00]',
+    text: 'text-white',         ring: 'ring-[#a67c00]/30',
+    next: null,
+  };
+  if (level >= 18) return {
+    name: 'Inspecteur Sénior',  icon: 'military_tech',
+    bg: 'bg-gradient-to-br from-[#8f0020] to-[#5a0013]',
+    text: 'text-white',         ring: 'ring-[#8f0020]/30',
+    next: 'Chef Inspecteur',
+  };
+  if (level >= 13) return {
+    name: 'Inspecteur Michelin', icon: 'badge',
+    bg: 'bg-gradient-to-br from-[#ba0b2f] to-[#8f0020]',
+    text: 'text-white',          ring: 'ring-[#ba0b2f]/30',
+    next: 'Inspecteur Sénior',
+  };
+  if (level >= 9) return {
+    name: 'Inspecteur Stagiaire', icon: 'school',
+    bg: 'bg-gradient-to-br from-[#775800] to-[#5a4100]',
+    text: 'text-white',            ring: 'ring-[#775800]/30',
+    next: 'Inspecteur Michelin',
+  };
+  if (level >= 6) return {
+    name: 'Bib Gourmand',     icon: 'mood',
+    bg: 'bg-gradient-to-br from-[#f8bd2a] to-[#c99600]',
+    text: 'text-[#3d2c00]',   ring: 'ring-[#f8bd2a]/40',
+    next: 'Inspecteur Stagiaire',
+  };
+  if (level >= 4) return {
+    name: 'Fin Gourmet',      icon: 'restaurant',
+    bg: 'bg-surface-container-high',
+    text: 'text-on-surface/70', ring: 'ring-outline-variant/30',
+    next: 'Bib Gourmand',
+  };
+  if (level >= 2) return {
+    name: 'Gastronome',       icon: 'dining',
+    bg: 'bg-surface-container-high',
+    text: 'text-on-surface/70', ring: 'ring-outline-variant/30',
+    next: 'Fin Gourmet',
+  };
+  return {
+    name: 'Curieux',          icon: 'explore',
+    bg: 'bg-surface-container-high',
+    text: 'text-on-surface/60', ring: 'ring-outline-variant/20',
+    next: 'Gastronome',
+  };
+}
+
 function makeMarkerEl(index: number, active: boolean): HTMLDivElement {
   const el = document.createElement('div');
   el.style.cssText = `
@@ -185,6 +245,7 @@ export function ProfilePage() {
   const safeLevel = user.level ?? 1;
   const safeStreak = user.streak ?? 0;
   const { inLevel, needed, pct } = xpProgress(safeXp, safeLevel);
+  const badge = getBadge(safeLevel);
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
@@ -219,6 +280,18 @@ export function ProfilePage() {
               <div className="min-w-0 pt-1">
                 <h1 className="text-2xl font-black tracking-tight truncate">{user.username}</h1>
                 <p className="text-sm text-on-surface/50 mt-0.5 truncate">{user.email}</p>
+                {/* Badge */}
+                <div className={`inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full ring-1 ${badge.bg} ${badge.ring}`}>
+                  <span
+                    className={`material-symbols-outlined ${badge.text}`}
+                    style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {badge.icon}
+                  </span>
+                  <span className={`text-[11px] font-black uppercase tracking-widest ${badge.text}`}>
+                    {badge.name}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -250,7 +323,12 @@ export function ProfilePage() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <p className="text-xs text-on-surface/40 font-bold mt-1.5">{pct}% vers le niveau {safeLevel + 1}</p>
+              <p className="text-xs text-on-surface/40 font-bold mt-1.5">
+                {pct}% vers le niveau {safeLevel + 1}
+                {badge.next && (
+                  <span className="ml-1 text-on-surface/30">· prochain badge : {badge.next}</span>
+                )}
+              </p>
             </div>
 
             {/* Journey counter */}
