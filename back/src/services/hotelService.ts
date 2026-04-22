@@ -32,14 +32,23 @@ export class HotelService {
       ? params.priceFilters
       : undefined;
 
-    const results = await this.hotelRepository.search({
+    const searchBase = {
       lat: params.latitude,
       lng: params.longitude,
       radius: params.radiusKm,
       ...(priceFilter && { prices: priceFilter }),
-      ...(params.tagIds.length > 0 && { tags: params.tagIds }),
       limit: 200,
+    };
+
+    let results = await this.hotelRepository.search({
+      ...searchBase,
+      ...(params.tagIds.length > 0 && { tags: params.tagIds }),
     });
+
+    // Fallback: if tags produced too few results, retry without tag filter
+    if (results.length < params.count && params.tagIds.length > 0) {
+      results = await this.hotelRepository.search(searchBase);
+    }
 
     if (results.length === 0) {
       throw new NoHotelsError();
