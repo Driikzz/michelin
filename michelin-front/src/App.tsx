@@ -6,6 +6,7 @@ import { Toaster } from './components/ui/Toaster';
 import { InstallBanner } from './components/ui/InstallBanner';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { UserOnlyRoute } from './components/UserOnlyRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { LobbyPage } from './pages/LobbyPage';
@@ -28,12 +29,15 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/join/:roomId" element={<JoinPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            {/* Accessible aux guests (rejoindre ou participer à une partie) */}
             <Route element={<ProtectedRoute />}>
               <Route path="/lobby" element={<LobbyPage />} />
               <Route path="/deck" element={<DeckBuilderPage />} />
               <Route path="/roulette" element={<RoulettePage />} />
               <Route path="/verdict" element={<VerdictPage />} />
+            </Route>
+            {/* Réservé aux comptes connectés uniquement */}
+            <Route element={<UserOnlyRoute />}>
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<Navigate to="/lobby" replace />} />

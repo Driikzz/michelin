@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import * as maptilersdk from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import { TopNav } from '../components/layout/TopNav';
 import { RestaurantCard } from '../components/game/RestaurantCard';
-import { CountdownTimer } from '../components/ui/CountdownTimer';
 import { EntityDetailModal } from '../components/game/EntityDetailModal';
 import { useGame, entityImage, michelinStarCount, priceLabel } from '../contexts/GameContext';
 import { entityService } from '../services/entityService';
@@ -55,6 +54,23 @@ export function DeckBuilderPage() {
   const [detailEntity, setDetailEntity] = useState<Entity | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  const initialSeconds = useMemo(
+    () => game.timerEndsAt ? Math.max(0, Math.round((game.timerEndsAt - Date.now()) / 1000)) : 30,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const [timerSeconds, setTimerSeconds] = useState(initialSeconds);
+
+  // Reconnect WS on page refresh (context is wiped but sessionStorage restores roomId)
+  useEffect(() => {
+    if (!game.wsConnected && game.roomId) {
+      const token = localStorage.getItem('token') ?? undefined;
+      const guestId = localStorage.getItem('guestId') ?? undefined;
+      game.connectWs(game.roomId, token, guestId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Map refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maptilersdk.Map | null>(null);
@@ -99,6 +115,24 @@ export function DeckBuilderPage() {
   useEffect(() => {
     if (game.phase === 'VOTING') navigate('/roulette');
   }, [game.phase, navigate]);
+
+  // Timer server-side — driven by game.timerEndsAt
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (game.timerEndsAt) {
+        const remaining = Math.max(0, Math.round((game.timerEndsAt - Date.now()) / 1000));
+        setTimerSeconds(remaining);
+        if (remaining === 0) handleTimerExpire();
+      } else {
+        setTimerSeconds(s => {
+          if (s <= 1) { handleTimerExpire(); return 0; }
+          return s - 1;
+        });
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.timerEndsAt]);
 
   // Init map once
   useEffect(() => {
@@ -223,8 +257,18 @@ export function DeckBuilderPage() {
             </h1>
             <p className="text-sm text-on-surface/50 mt-0.5">{t('deck.curatorSubtitle')}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <CountdownTimer initialSeconds={30} large onEnd={handleTimerExpire} />
+          <div className="flex flex-col items-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-on-surface/50 mb-1">
+              {t('deck.timeToCurate')}
+            </span>
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              aria-label={`Temps restant : ${timerSeconds} secondes`}
+              className={`text-[4rem] font-bold tracking-tighter leading-none transition-colors ${timerSeconds <= 10 ? 'text-error' : 'text-on-surface'}`}
+            >
+              {String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:{String(timerSeconds % 60).padStart(2, '0')}
+            </div>
           </div>
         </div>
       </header>

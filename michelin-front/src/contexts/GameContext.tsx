@@ -2,8 +2,10 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +18,34 @@ import type {
   RoomPhase,
   XpAward,
 } from '../types/api';
+
+// ── Session persistence ───────────────────────────────────────────────────────
+
+const SESSION_KEY = 'michelin_game_session';
+
+type PersistedSession = {
+  roomId: string;
+  playerId: number | null;
+  gameMode: string | null;
+  entityType: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  radiusKm: number;
+  timerEndsAt: number | null;
+  phase: string | null;
+  sessionId: number | null;
+  hostPlayerId: number | null;
+};
+
+function loadSession(): Partial<PersistedSession> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as PersistedSession;
+  } catch {
+    return {};
+  }
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -138,6 +168,7 @@ function reducer(state: GameState, action: Action): GameState {
 // ── Context value ─────────────────────────────────────────────────────────────
 
 interface GameContextValue extends GameState {
+  wsConnected: boolean;
   setRoom: (params: {
     roomId: string;
     playerId: number;
@@ -198,10 +229,36 @@ interface TimerUpdatePayload {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, () => ({
+    ...initialState,
+    ...loadSession(),
+  }));
+  const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const sessionIdRef = useRef<number | null>(null);
   const navigate = useNavigate();
+
+  // Persist key session fields to sessionStorage so a browser refresh can restore them
+  useEffect(() => {
+    if (!state.roomId) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return;
+    }
+    const toSave: PersistedSession = {
+      roomId: state.roomId,
+      playerId: state.playerId,
+      gameMode: state.gameMode,
+      entityType: state.entityType,
+      latitude: state.latitude,
+      longitude: state.longitude,
+      radiusKm: state.radiusKm,
+      timerEndsAt: state.timerEndsAt,
+      phase: state.phase,
+      sessionId: state.sessionId,
+      hostPlayerId: state.hostPlayerId,
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(toSave));
+  }, [state.roomId, state.playerId, state.timerEndsAt, state.phase, state.sessionId, state.hostPlayerId]);
 
   const setRoom = useCallback(
     (params: {
@@ -233,7 +290,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        setWsConnected(true);
         ws.send(JSON.stringify({ event: 'room:join', payload: {} }));
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
       };
 
       ws.onmessage = (evt: MessageEvent<string>) => {
@@ -260,6 +322,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 hostPlayerId: p.hostPlayerId,
                 timerEndsAt: p.timerEndsAt ?? null,
               });
+              // Navigate to the correct page on reconnection (e.g. after browser refresh)
+              if (p.phase === 'BUILDING') navigate('/deck');
+              else if (p.phase === 'VOTING') navigate('/roulette');
             }
             break;
           }
@@ -353,6 +418,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     wsRef.current?.close();
     wsRef.current = null;
     sessionIdRef.current = null;
+    sessionStorage.removeItem(SESSION_KEY);
     dispatch({ type: 'RESET' });
   }, []);
 
@@ -360,6 +426,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     <GameContext.Provider
       value={{
         ...state,
+        wsConnected,
         setRoom,
         connectWs,
         disconnectWs,

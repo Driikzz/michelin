@@ -1,14 +1,18 @@
 import { NavLink } from 'react-router-dom';
 import { FlowProgress } from './FlowProgress';
+import { useAuth } from '../../hooks/useAuth';
 
 export function TopNav() {
+  const { user } = useAuth();
+  const homeHref = user ? '/lobby' : '/login';
+
   return (
     <nav className="flex flex-col w-full sticky top-0 z-50 bg-surface-container-low/95 backdrop-blur-md border-b border-outline-variant/10" aria-label="Navigation principale">
       <a href="#main-content" className="skip-link">Aller au contenu principal</a>
 
       {/* Mobile: brand left + profile right */}
       <div className="flex sm:hidden items-center justify-between px-5 py-3">
-        <NavLink to="/lobby" aria-label="Accueil — Michelin Game">
+        <NavLink to={homeHref} aria-label="Accueil — Michelin Game">
           <img
             src="/michelin.png"
             alt="Michelin Game"
@@ -26,7 +30,7 @@ export function TopNav() {
 
       {/* Flow progress row — full width on mobile, centered+profile on desktop */}
       <div className="border-t border-outline-variant/10 relative flex items-center sm:px-6 sm:py-3">
-        <NavLink to="/lobby" aria-label="Accueil — Michelin Game" className="hidden sm:block">
+        <NavLink to={homeHref} aria-label="Accueil — Michelin Game" className="hidden sm:block">
           <img
             src="/michelin.png"
             alt="Michelin Game"
