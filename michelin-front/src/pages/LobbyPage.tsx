@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TopNav } from '../components/layout/TopNav';
 import { useGame } from '../contexts/GameContext';
@@ -124,8 +125,14 @@ const PRICE_LABELS = ['€', '€€', '€€€', '€€€€'];
 
 export function LobbyPage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const game = useGame();
+
+  // Guest without an active room → redirect to login (can't access the host/creation side)
+  const isGuest = !user && !!localStorage.getItem('guestId');
+  if (!isLoading && isGuest && !game.roomId) {
+    return <Navigate to="/login" replace />;
+  }
 
   const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
