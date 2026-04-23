@@ -9,6 +9,117 @@ import { MOCK_PRESETS } from '../data/mockData';
 import { RadiusMap } from '../components/ui/RadiusMap';
 import type { GameMode, Tag } from '../types/api';
 
+interface CityResult { name: string; lat: number; lng: number; }
+
+function CitySearchBar({ locationLabel, onSelect, onReset }: {
+  locationLabel: string;
+  onSelect: (r: CityResult) => void;
+  onReset: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<CityResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY ?? '';
+
+  useEffect(() => {
+    if (query.length < 1) { setSuggestions([]); setOpen(false); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${MAPTILER_KEY}&language=fr&limit=10`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = await res.json() as { features?: any[] };
+        const results: CityResult[] = (data.features ?? [])
+          .filter((f: any) => {
+            const types: string[] = f.place_type ?? [];
+            return types.some(t => ['place', 'municipality', 'locality', 'region', 'joint_municipality'].includes(t));
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((f: any) => ({
+            name: (f.place_name_fr ?? f.place_name ?? f.text ?? '') as string,
+            lat: (f.center as [number, number])[1],
+            lng: (f.center as [number, number])[0],
+          }));
+        setSuggestions(results);
+        setOpen(results.length > 0);
+      } catch { /* ignore network errors */ }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, MAPTILER_KEY]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (r: CityResult) => {
+    onSelect(r);
+    setQuery('');
+    setSuggestions([]);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="relative flex items-center">
+        <span aria-hidden="true" className="material-symbols-outlined absolute left-3 text-on-surface/40 pointer-events-none" style={{ fontSize: '18px' }}>location_on</span>
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          placeholder={locationLabel || 'Chercher une ville…'}
+          aria-label="Rechercher une ville"
+          className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-2xl py-3 pl-10 pr-10 text-sm text-on-surface placeholder:text-on-surface/50 focus:outline-none focus:border-primary-container/40 transition-all"
+        />
+        {locationLabel && !query && (
+          <button
+            onClick={onReset}
+            aria-label="Revenir à ma position GPS"
+            title="Revenir à ma position GPS"
+            className="absolute right-3 text-primary-container hover:text-primary transition-colors"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '16px' }}>my_location</span>
+          </button>
+        )}
+        {query && (
+          <button
+            onClick={() => { setQuery(''); setSuggestions([]); setOpen(false); }}
+            aria-label="Effacer la recherche"
+            className="absolute right-3 text-on-surface/40 hover:text-on-surface transition-colors"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+          </button>
+        )}
+      </div>
+      {open && suggestions.length > 0 && (
+        <ul
+          role="listbox"
+          aria-label="Suggestions de villes"
+          className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-[0_8px_30px_rgba(28,27,27,0.12)] overflow-hidden"
+        >
+          {suggestions.map((s, i) => (
+            <li key={i} role="option" aria-selected={false}>
+              <button
+                onClick={() => handleSelect(s)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-low transition-colors border-b border-outline-variant/10 last:border-0"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-primary-container shrink-0" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>location_city</span>
+                <span className="text-sm text-on-surface font-medium truncate">{s.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const PRICE_LABELS = ['€', '€€', '€€€', '€€€€'];
 
 export function LobbyPage() {
@@ -22,6 +133,7 @@ export function LobbyPage() {
   const [radiusKm, setRadiusKm] = useState(5);
   const [tags, setTags] = useState<Tag[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -82,6 +194,19 @@ export function LobbyPage() {
     setSelectedTags((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
+
+  const handleSelectCity = (r: CityResult) => {
+    setCoords({ lat: r.lat, lng: r.lng });
+    setLocationLabel(r.name);
+  };
+
+  const handleResetGPS = () => {
+    setLocationLabel('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setCoords({ lat: 48.85, lng: 2.35 }),
+    );
+  };
 
   const handleStart = async () => {
     if (!coords) { setError('Waiting for location…'); return; }
@@ -253,6 +378,7 @@ export function LobbyPage() {
 
               {/* Map + slider (mobile only — desktop has it in the right panel) */}
               <div className="lg:hidden flex flex-col gap-3">
+                <CitySearchBar locationLabel={locationLabel} onSelect={handleSelectCity} onReset={handleResetGPS} />
                 <div className="bg-surface-container-low rounded-2xl p-5">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-xs uppercase tracking-widest text-on-surface/50 font-bold">{t('lobby.maxDistance')}</p>
@@ -416,6 +542,7 @@ export function LobbyPage() {
             {/* Distance slider + map */}
             {!roomCreated && (
               <div className="flex flex-col gap-3">
+                <CitySearchBar locationLabel={locationLabel} onSelect={handleSelectCity} onReset={handleResetGPS} />
                 <div className="bg-surface-container-low rounded-2xl p-5">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-xs uppercase tracking-widest text-on-surface/50 font-bold">{t('lobby.maxDistance')}</p>

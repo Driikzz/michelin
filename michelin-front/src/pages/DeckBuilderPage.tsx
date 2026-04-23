@@ -33,13 +33,13 @@ function makeMarkerEl(inDeck: boolean): HTMLDivElement {
   const el = document.createElement('div');
   el.style.cssText = `
     width: 28px; height: 28px; border-radius: 50%;
-    background: ${inDeck ? '#16a34a' : '#ba0b2f'};
     border: 2.5px solid #ffffff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     cursor: pointer;
-    transition: transform 0.15s, background 0.2s;
+    transition: box-shadow 0.15s, background-color 0.2s;
     display: flex; align-items: center; justify-content: center;
   `;
+  el.style.backgroundColor = inDeck ? '#16a34a' : '#ba0b2f';
   return el;
 }
 
@@ -168,8 +168,8 @@ export function DeckBuilderPage() {
 
       withCoords.forEach(entity => {
         const el = makeMarkerEl(deck.has(entity.id));
-        el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.2)'; });
-        el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+        el.addEventListener('mouseenter', () => { el.style.boxShadow = '0 0 0 4px rgba(255,255,255,0.6), 0 4px 14px rgba(0,0,0,0.4)'; });
+        el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)'; });
         el.addEventListener('click', () => setDetailEntity(entity));
 
         const marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
@@ -192,7 +192,7 @@ export function DeckBuilderPage() {
   // Update marker colors when deck changes without rebuilding markers
   useEffect(() => {
     markersRef.current.forEach(({ el, entityId }) => {
-      el.style.background = deck.has(entityId) ? '#16a34a' : '#ba0b2f';
+      el.style.backgroundColor = deck.has(entityId) ? '#16a34a' : '#ba0b2f';
     });
   }, [deck]);
 
